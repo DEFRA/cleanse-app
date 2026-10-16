@@ -46,6 +46,11 @@ export const config = convict({
     format: String,
     default: 'cleanse-app'
   },
+  serviceDisplayName: {
+    doc: 'The service name shown to users. Distinct from the CDP service identity.',
+    format: String,
+    default: 'Cleanse'
+  },
   root: {
     doc: 'Project root',
     format: String,
@@ -213,6 +218,53 @@ export const config = convict({
       format: String,
       default: 'x-cdp-request-id',
       env: 'TRACING_HEADER'
+    }
+  },
+  aws: {
+    region: {
+      doc: 'AWS region, used when minting an STS web identity token',
+      format: String,
+      default: 'eu-west-2',
+      env: 'AWS_REGION'
+    }
+  },
+  cleanse: {
+    apiUrl: {
+      doc: 'Base URL of the Cleanse backend',
+      format: String,
+      default: 'http://localhost:8085',
+      env: 'CLEANSE_API_URL'
+    },
+    audience: {
+      doc: 'Audience the backend expects in a web identity token. Chosen by us, not the platform',
+      format: String,
+      default: 'cleanse',
+      env: 'CLEANSE_API_AUDIENCE'
+    },
+    auth: {
+      doc: 'How to authenticate to the backend. LocalStack does not implement GetWebIdentityToken, so local development uses the shared key',
+      format: ['stsJwt', 'apiKey'],
+      default: isProduction ? 'stsJwt' : 'apiKey',
+      env: 'CLEANSE_API_AUTH'
+    },
+    apiKey: {
+      doc: 'Shared key for the x-cleanse-api-key header. Only read when auth is apiKey',
+      format: String,
+      default: 'local-development-key',
+      sensitive: true,
+      env: 'CLEANSE_API_KEY'
+    },
+    timeout: {
+      doc: 'Milliseconds to wait for the backend before giving up',
+      format: Number,
+      default: 20000,
+      env: 'CLEANSE_API_TIMEOUT'
+    },
+    groupId: {
+      doc: 'The rule group the service works in. Only cts-sam exists today',
+      format: String,
+      default: 'cts-sam',
+      env: 'CLEANSE_GROUP_ID'
     }
   }
 })

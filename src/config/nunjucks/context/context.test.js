@@ -67,11 +67,11 @@ describe('context and cache', () => {
             },
             {
               current: false,
-              text: 'About',
-              href: '/about'
+              text: 'Issues',
+              href: '/issues'
             }
           ],
-          serviceName: 'cleanse-app',
+          serviceName: 'Cleanse',
           serviceUrl: '/'
         })
       })
@@ -156,11 +156,11 @@ describe('context and cache', () => {
             },
             {
               current: false,
-              text: 'About',
-              href: '/about'
+              text: 'Issues',
+              href: '/issues'
             }
           ],
-          serviceName: 'cleanse-app',
+          serviceName: 'Cleanse',
           serviceUrl: '/'
         })
       })

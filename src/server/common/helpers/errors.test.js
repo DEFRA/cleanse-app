@@ -23,7 +23,7 @@ describe('#errors', () => {
     })
 
     expect(result).toEqual(
-      expect.stringContaining('Page not found | cleanse-app')
+      expect.stringContaining('Page not found - Cleanse')
     )
     expect(statusCode).toBe(statusCodes.notFound)
   })
