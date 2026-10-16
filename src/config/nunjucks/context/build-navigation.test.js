@@ -16,8 +16,8 @@ describe('#buildNavigation', () => {
       },
       {
         current: false,
-        text: 'About',
-        href: '/about'
+        text: 'Issues',
+        href: '/issues'
       }
     ])
   })
@@ -31,9 +31,28 @@ describe('#buildNavigation', () => {
       },
       {
         current: false,
-        text: 'About',
-        href: '/about'
+        text: 'Issues',
+        href: '/issues'
       }
+    ])
+  })
+
+  test('Should highlight Issues for any page beneath it', () => {
+    const navigation = buildNavigation(
+      mockRequest({ path: '/issues/2-ABCDEFGH/suppress' })
+    )
+
+    expect(navigation[1]).toEqual({
+      current: true,
+      text: 'Issues',
+      href: '/issues'
+    })
+  })
+
+  test('Should cope with a request that has no path', () => {
+    expect(buildNavigation(undefined)).toEqual([
+      { current: false, text: 'Home', href: '/' },
+      { current: false, text: 'Issues', href: '/issues' }
     ])
   })
 })

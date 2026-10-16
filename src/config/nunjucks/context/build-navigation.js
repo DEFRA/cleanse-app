@@ -1,14 +1,16 @@
 export function buildNavigation(request) {
+  const path = request?.path ?? ''
+
   return [
     {
       text: 'Home',
       href: '/',
-      current: request?.path === '/'
+      current: path === '/'
     },
     {
-      text: 'About',
-      href: '/about',
-      current: request?.path === '/about'
+      text: 'Issues',
+      href: '/issues',
+      current: path.startsWith('/issues')
     }
   ]
 }
