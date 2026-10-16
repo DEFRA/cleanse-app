@@ -35,7 +35,9 @@ describe('#createAuthStrategy', () => {
     test('Should present the token as a bearer credential', async () => {
       const strategy = createAuthStrategy('stsJwt')
 
-      expect(await strategy.headers()).toEqual({ authorization: 'Bearer a.b.c' })
+      expect(await strategy.headers()).toEqual({
+        authorization: 'Bearer a.b.c'
+      })
     })
 
     test('Should stay within the 900 second cap and send no tags', async () => {

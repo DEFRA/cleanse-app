@@ -44,7 +44,9 @@ describe('#homeController', () => {
     })
 
     expect(statusCode).toBe(statusCodes.ok)
-    expect(result).toEqual(expect.stringContaining('Cleanse - Cleanse - GOV.UK'))
+    expect(result).toEqual(
+      expect.stringContaining('Cleanse - Cleanse - GOV.UK')
+    )
   })
 
   test('Should count only active issues against each workflow status', async () => {

@@ -52,7 +52,10 @@ export const performResetController = {
         throw error
       }
 
-      logger.warn({ status: error.status, code: error.code }, 'Database reset was refused')
+      logger.warn(
+        { status: error.status, code: error.code },
+        'Database reset was refused'
+      )
       return render(h, { error: error.detail ?? error.message, scope })
     }
   }

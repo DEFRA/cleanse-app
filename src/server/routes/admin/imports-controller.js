@@ -2,7 +2,10 @@ import { config } from '#/config/config.js'
 import { describeImportStatus } from '#/server/common/constants/workflow.js'
 import { CleanseApiError } from '#/server/common/helpers/cleanse/client.js'
 
-const decorate = (job) => ({ ...job, statusDetail: describeImportStatus(job.status) })
+const decorate = (job) => ({
+  ...job,
+  statusDetail: describeImportStatus(job.status)
+})
 
 /** Matches Imports:MaxUploadBytes on the backend, so a too-large file is refused here first. */
 export const maxUploadBytes = 50 * 1024 * 1024
@@ -41,7 +44,9 @@ export const uploadImportController = {
     const file = request.payload?.file
 
     if (!file?.filename || !file.payload?.length) {
-      return renderList(request, h, { error: 'Select a SPOL CSV file to upload' })
+      return renderList(request, h, {
+        error: 'Select a SPOL CSV file to upload'
+      })
     }
 
     try {
@@ -51,7 +56,10 @@ export const uploadImportController = {
         content: file.payload
       })
 
-      request.yar.flash('notification', `${file.filename} uploaded. Processing has started.`)
+      request.yar.flash(
+        'notification',
+        `${file.filename} uploaded. Processing has started.`
+      )
       return h.redirect(`/admin/imports/${job.id}`)
     } catch (error) {
       if (!(error instanceof CleanseApiError)) {
@@ -66,9 +74,12 @@ export const uploadImportController = {
 export const importDetailController = {
   async handler(request, h) {
     const job = await request.cleanse.getImport(request.params.id)
-    const rejections = await request.cleanse.getImportRejections(request.params.id, {
-      pageSize: 50
-    })
+    const rejections = await request.cleanse.getImportRejections(
+      request.params.id,
+      {
+        pageSize: 50
+      }
+    )
 
     return h.view('admin/import-detail', {
       pageTitle: job.fileName,

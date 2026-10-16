@@ -39,7 +39,11 @@ export const detailController = {
  * Shared by every action page: fetches the issue, and refuses to render a form for a move the
  * domain would reject anyway.
  */
-export async function loadForAction(request, h, { target, view, pageTitle, extra = {} }) {
+export async function loadForAction(
+  request,
+  h,
+  { target, view, pageTitle, extra = {} }
+) {
   const issue = presentIssue(await request.cleanse.getIssue(request.params.id))
 
   if (target && !issue.can[target]) {

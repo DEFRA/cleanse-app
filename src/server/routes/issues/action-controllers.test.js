@@ -31,7 +31,9 @@ function stubBackend({ onMutate } = {}) {
   return vi.spyOn(globalThis, 'fetch').mockImplementation((url, init) => {
     if ((init?.method ?? 'GET') === 'GET') {
       return Promise.resolve(
-        url.includes('/history') ? json({ items: [], totalCount: 0 }) : json(issue)
+        url.includes('/history')
+          ? json({ items: [], totalCount: 0 })
+          : json(issue)
       )
     }
 
@@ -86,7 +88,9 @@ describe('#issue actions', () => {
     expect(statusCode).toBe(statusCodes.found)
     expect(headers.location).toBe(`/issues/${issue.id}`)
 
-    const mutation = fetchSpy.mock.calls.find(([, init]) => init?.method === 'PUT')
+    const mutation = fetchSpy.mock.calls.find(
+      ([, init]) => init?.method === 'PUT'
+    )
     expect(JSON.parse(mutation[1].body)).toEqual({
       workflowStatus: 'in-progress',
       expectedVersion: 4

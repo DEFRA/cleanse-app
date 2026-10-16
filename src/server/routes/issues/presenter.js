@@ -16,7 +16,8 @@ export function presentIssue(issue) {
     cph: context.cph,
     ruleNumber: context.ruleNumber,
     errorCode: context.errorCode,
-    errorDescription: context.errorDescription ?? `Rule ${context.ruleNumber ?? issue.ruleId}`,
+    errorDescription:
+      context.errorDescription ?? `Rule ${context.ruleNumber ?? issue.ruleId}`,
     holdingName: context.samFeatureName,
     statusDetail: describeIssueStatus(issue.status),
     workflowDetail: describeWorkflowStatus(issue.workflowStatus),
@@ -33,7 +34,12 @@ export function presentIssue(issue) {
 }
 
 /** Keys the rules engine writes for its own bookkeeping; shown elsewhere, not in the evidence. */
-const identityKeys = new Set(['cph', 'ruleNumber', 'errorCode', 'errorDescription'])
+const identityKeys = new Set([
+  'cph',
+  'ruleNumber',
+  'errorCode',
+  'errorDescription'
+])
 
 const labels = {
   ctsLocationNumber: 'Location number',
@@ -48,7 +54,10 @@ const labels = {
 
 /** Turns a camelCase key into something readable when it has no label of its own. */
 function humanise(key) {
-  const words = key.replace(/^(cts|sam)/, '').replace(/([A-Z])/g, ' $1').trim()
+  const words = key
+    .replace(/^(cts|sam)/, '')
+    .replace(/([A-Z])/g, ' $1')
+    .trim()
   return words.charAt(0).toUpperCase() + words.slice(1).toLowerCase()
 }
 
@@ -69,7 +78,12 @@ export function presentEvidence(issue) {
   const context = issue.context ?? {}
 
   const other = Object.entries(context)
-    .filter(([key]) => !identityKeys.has(key) && !key.startsWith('cts') && !key.startsWith('sam'))
+    .filter(
+      ([key]) =>
+        !identityKeys.has(key) &&
+        !key.startsWith('cts') &&
+        !key.startsWith('sam')
+    )
     .map(([key, value]) => ({
       key: { text: labels[key] ?? humanise(key) },
       value: { text: value }

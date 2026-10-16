@@ -50,35 +50,51 @@ describe('#admin reset', () => {
   }
 
   test('Should warn about what is destroyed before anything is typed', async () => {
-    const { statusCode, result } = await server.inject({ method: 'GET', url: '/admin/reset' })
+    const { statusCode, result } = await server.inject({
+      method: 'GET',
+      url: '/admin/reset'
+    })
 
     expect(statusCode).toBe(statusCodes.ok)
     expect(result).toContain('There is no undo')
   })
 
   test('Should refuse without a key, and not call the backend at all', async () => {
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(json(resetResult))
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(json(resetResult))
 
-    const { statusCode, result } = await post({ resetKey: '  ', scope: 'group' })
+    const { statusCode, result } = await post({
+      resetKey: '  ',
+      scope: 'group'
+    })
 
     expect(statusCode).toBe(statusCodes.badRequest)
     expect(result).toContain('Enter the reset key')
-    expect(fetchSpy.mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(0)
+    expect(
+      fetchSpy.mock.calls.filter(([, init]) => init?.method === 'POST')
+    ).toHaveLength(0)
   })
 
   test('Should send the key as a header and scope the wipe to the group by default', async () => {
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(json(resetResult))
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(json(resetResult))
 
     await post({ resetKey: 'a-key', scope: 'group' })
 
-    const [url, init] = fetchSpy.mock.calls.find(([, i]) => i?.method === 'POST')
+    const [url, init] = fetchSpy.mock.calls.find(
+      ([, i]) => i?.method === 'POST'
+    )
     expect(url).toContain('/v1/maintenance/reset')
     expect(init.headers['x-reset-key']).toBe('a-key')
     expect(JSON.parse(init.body)).toEqual({ groupId: 'cts-sam' })
   })
 
   test('Should clear every group only when explicitly asked', async () => {
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(json(resetResult))
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(json(resetResult))
 
     await post({ resetKey: 'a-key', scope: 'all' })
 
@@ -89,7 +105,10 @@ describe('#admin reset', () => {
   test('Should report what was deleted and send the user to the status page', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(json(resetResult))
 
-    const { statusCode, headers } = await post({ resetKey: 'a-key', scope: 'group' })
+    const { statusCode, headers } = await post({
+      resetKey: 'a-key',
+      scope: 'group'
+    })
 
     expect(statusCode).toBe(statusCodes.found)
     expect(headers.location).toBe('/admin/status')
@@ -98,12 +117,19 @@ describe('#admin reset', () => {
   test('Should show the backend reason when the key is refused', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       json(
-        { title: 'Forbidden', detail: 'The supplied reset key is not valid.', code: 'reset.key_invalid' },
+        {
+          title: 'Forbidden',
+          detail: 'The supplied reset key is not valid.',
+          code: 'reset.key_invalid'
+        },
         statusCodes.forbidden
       )
     )
 
-    const { statusCode, result } = await post({ resetKey: 'wrong', scope: 'group' })
+    const { statusCode, result } = await post({
+      resetKey: 'wrong',
+      scope: 'group'
+    })
 
     expect(statusCode).toBe(statusCodes.badRequest)
     expect(result).toContain('The supplied reset key is not valid.')

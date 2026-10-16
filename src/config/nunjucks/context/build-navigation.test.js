@@ -6,7 +6,9 @@ function mockRequest(options) {
 
 describe('#buildNavigation', () => {
   test('Should provide expected navigation details', () => {
-    expect(buildNavigation(mockRequest({ path: '/non-existent-path' }))).toEqual([
+    expect(
+      buildNavigation(mockRequest({ path: '/non-existent-path' }))
+    ).toEqual([
       {
         current: false,
         text: 'Home',
@@ -36,7 +38,9 @@ describe('#buildNavigation', () => {
   })
 
   test('Should highlight Issues for any page beneath it', () => {
-    const navigation = buildNavigation(mockRequest({ path: '/issues/2-ABCDEFGH/suppress' }))
+    const navigation = buildNavigation(
+      mockRequest({ path: '/issues/2-ABCDEFGH/suppress' })
+    )
 
     expect(navigation[1]).toEqual({
       current: true,

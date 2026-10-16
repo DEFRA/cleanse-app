@@ -22,9 +22,7 @@ describe('#errors', () => {
       url: '/non-existent-path'
     })
 
-    expect(result).toEqual(
-      expect.stringContaining('Page not found - Cleanse')
-    )
+    expect(result).toEqual(expect.stringContaining('Page not found - Cleanse'))
     expect(statusCode).toBe(statusCodes.notFound)
   })
 })

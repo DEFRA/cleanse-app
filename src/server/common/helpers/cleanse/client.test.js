@@ -57,7 +57,9 @@ describe('#createCleanseClient query building', () => {
 
     await client.getIssue('2:01/036/8000')
 
-    expect(fetchSpy.mock.calls[0][0]).toContain('/v1/issues/2%3A01%2F036%2F8000')
+    expect(fetchSpy.mock.calls[0][0]).toContain(
+      '/v1/issues/2%3A01%2F036%2F8000'
+    )
   })
 
   test('Should send the auth headers the strategy supplies', async () => {

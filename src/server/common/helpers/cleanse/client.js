@@ -66,12 +66,19 @@ function toQuery(params = {}) {
 }
 
 export function createCleanseClient(options = {}) {
-  const baseUrl = (options.baseUrl ?? config.get('cleanse.apiUrl')).replace(/\/$/, '')
+  const baseUrl = (options.baseUrl ?? config.get('cleanse.apiUrl')).replace(
+    /\/$/,
+    ''
+  )
   const timeout = options.timeout ?? config.get('cleanse.timeout')
   const auth = options.auth ?? createAuthStrategy()
   const traceHeader = config.get('tracing.header')
 
-  async function send(method, path, { query, body, form, headers: extra, traceId } = {}) {
+  async function send(
+    method,
+    path,
+    { query, body, form, headers: extra, traceId } = {}
+  ) {
     const url = `${baseUrl}${path}${toQuery(query)}`
     const headers = {
       accept: 'application/json',
@@ -90,7 +97,8 @@ export function createCleanseClient(options = {}) {
     }
 
     // fetch derives the multipart boundary itself, so content-type must be left unset.
-    const payload = form ?? (body === undefined ? undefined : JSON.stringify(body))
+    const payload =
+      form ?? (body === undefined ? undefined : JSON.stringify(body))
 
     let response
     try {
@@ -133,7 +141,8 @@ export function createCleanseClient(options = {}) {
     return {
       getGroups: () => request('GET', '/v1/groups'),
 
-      getGroupSummary: (groupId) => request('GET', `/v1/groups/${segment(groupId)}/summary`),
+      getGroupSummary: (groupId) =>
+        request('GET', `/v1/groups/${segment(groupId)}/summary`),
 
       getRules: () => request('GET', '/v1/rules'),
 
@@ -147,16 +156,19 @@ export function createCleanseClient(options = {}) {
       setWorkflowStatus: (id, body) =>
         request('PUT', `/v1/issues/${segment(id)}/workflow-status`, { body }),
 
-      setNotes: (id, body) => request('PUT', `/v1/issues/${segment(id)}/notes`, { body }),
+      setNotes: (id, body) =>
+        request('PUT', `/v1/issues/${segment(id)}/notes`, { body }),
 
-      suppress: (id, body) => request('PUT', `/v1/issues/${segment(id)}/suppression`, { body }),
+      suppress: (id, body) =>
+        request('PUT', `/v1/issues/${segment(id)}/suppression`, { body }),
 
       unsuppress: (id, expectedVersion) =>
         request('DELETE', `/v1/issues/${segment(id)}/suppression`, {
           query: { expectedVersion }
         }),
 
-      addHistory: (id, body) => request('POST', `/v1/issues/${segment(id)}/history`, { body }),
+      addHistory: (id, body) =>
+        request('POST', `/v1/issues/${segment(id)}/history`, { body }),
 
       searchRuns: (query) => request('GET', '/v1/runs', { query }),
 
@@ -164,7 +176,8 @@ export function createCleanseClient(options = {}) {
 
       triggerRun: () => request('POST', '/v1/runs/trigger'),
 
-      getDiagnostics: (groupId) => request('GET', '/v1/diagnostics', { query: { groupId } }),
+      getDiagnostics: (groupId) =>
+        request('GET', '/v1/diagnostics', { query: { groupId } }),
 
       /**
        * The reset key is supplied by the operator per request and never held by this service,

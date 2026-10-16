@@ -28,8 +28,12 @@ async function withConflictHandling(request, h, work) {
     return await work()
   } catch (error) {
     if (error instanceof CleanseApiError && error.isConflict) {
-      const issue = presentIssue(await request.cleanse.getIssue(request.params.id))
-      return h.view('issues/conflict', { pageTitle: 'This issue has changed', issue }).code(409)
+      const issue = presentIssue(
+        await request.cleanse.getIssue(request.params.id)
+      )
+      return h
+        .view('issues/conflict', { pageTitle: 'This issue has changed', issue })
+        .code(409)
     }
 
     throw error
@@ -132,22 +136,34 @@ export const suppressController = {
       target: 'suppress',
       view: 'issues/suppress',
       pageTitle: 'Suppress this issue',
-      extra: { periodItems: suppressionPeriods.map((p) => ({ value: p.id, text: p.name })) }
+      extra: {
+        periodItems: suppressionPeriods.map((p) => ({
+          value: p.id,
+          text: p.name
+        }))
+      }
     })
   },
 
   post(request, h) {
     return withConflictHandling(request, h, async () => {
-      const period = suppressionPeriods.find((p) => p.id === request.payload?.period)
+      const period = suppressionPeriods.find(
+        (p) => p.id === request.payload?.period
+      )
 
       if (!period) {
-        const issue = presentIssue(await request.cleanse.getIssue(request.params.id))
+        const issue = presentIssue(
+          await request.cleanse.getIssue(request.params.id)
+        )
 
         return h
           .view('issues/suppress', {
             pageTitle: 'Suppress this issue',
             issue,
-            periodItems: suppressionPeriods.map((p) => ({ value: p.id, text: p.name })),
+            periodItems: suppressionPeriods.map((p) => ({
+              value: p.id,
+              text: p.name
+            })),
             comments: request.payload?.comments,
             error: 'Select how long to suppress this issue for'
           })
@@ -167,7 +183,9 @@ export const suppressController = {
 
 export const noteController = {
   async get(request, h) {
-    const issue = presentIssue(await request.cleanse.getIssue(request.params.id))
+    const issue = presentIssue(
+      await request.cleanse.getIssue(request.params.id)
+    )
     return h.view('issues/note', { pageTitle: 'Add a note', issue })
   },
 
@@ -175,7 +193,9 @@ export const noteController = {
     const comments = (request.payload?.comments ?? '').trim()
 
     if (!comments) {
-      const issue = presentIssue(await request.cleanse.getIssue(request.params.id))
+      const issue = presentIssue(
+        await request.cleanse.getIssue(request.params.id)
+      )
 
       return h
         .view('issues/note', {

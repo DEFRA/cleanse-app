@@ -27,7 +27,10 @@ export const homeController = {
     const counts = countsByWorkflowStatus(summary.breakdown)
 
     const latestRun = summary.latestRun
-      ? { ...summary.latestRun, stateDetail: describeRunState(summary.latestRun.state) }
+      ? {
+          ...summary.latestRun,
+          stateDetail: describeRunState(summary.latestRun.state)
+        }
       : null
 
     return h.view('home/index', {

@@ -40,14 +40,26 @@ describe('#presentIssue', () => {
 
   test('Should offer only the moves the backend allows, and never a no-op', () => {
     const todo = presentIssue(issue).can
-    expect(todo).toMatchObject({ resolve: true, suppress: true, ignore: true, reopen: false })
+    expect(todo).toMatchObject({
+      resolve: true,
+      suppress: true,
+      ignore: true,
+      reopen: false
+    })
 
-    const suppressed = presentIssue({ ...issue, workflowStatus: 'suppressed' }).can
+    const suppressed = presentIssue({
+      ...issue,
+      workflowStatus: 'suppressed'
+    }).can
     // Suppressed cannot be suppressed again, but can be lifted back to To do.
     expect(suppressed).toMatchObject({ suppress: false, reopen: true })
 
     const ignored = presentIssue({ ...issue, workflowStatus: 'ignored' }).can
-    expect(ignored).toMatchObject({ resolve: false, suppress: false, reopen: true })
+    expect(ignored).toMatchObject({
+      resolve: false,
+      suppress: false,
+      reopen: true
+    })
   })
 })
 
@@ -55,8 +67,14 @@ describe('#presentEvidence', () => {
   test('Should split the context into the two systems being compared', () => {
     const { cts, sam } = presentEvidence(issue)
 
-    expect(cts.map((row) => row.key.text)).toEqual(['Location number', 'Keeper surname'])
-    expect(sam.map((row) => row.key.text)).toEqual(['Holding name', 'Species recorded'])
+    expect(cts.map((row) => row.key.text)).toEqual([
+      'Location number',
+      'Keeper surname'
+    ])
+    expect(sam.map((row) => row.key.text)).toEqual([
+      'Holding name',
+      'Species recorded'
+    ])
   })
 
   test('Should leave the SAM side empty when SAM holds nothing, which is rule 2 itself', () => {
@@ -70,7 +88,9 @@ describe('#presentEvidence', () => {
 
   test('Should keep the identity keys out of the evidence, since they are shown elsewhere', () => {
     const shown = presentEvidence(issue)
-    const keys = [...shown.cts, ...shown.sam, ...shown.other].map((row) => row.key.text)
+    const keys = [...shown.cts, ...shown.sam, ...shown.other].map(
+      (row) => row.key.text
+    )
 
     expect(keys).not.toContain('Cph')
     expect(keys).not.toContain('Error code')
@@ -79,6 +99,8 @@ describe('#presentEvidence', () => {
   test('Should humanise a context key the rules engine adds later', () => {
     const { other } = presentEvidence({ context: { someNewSignal: 'yes' } })
 
-    expect(other).toEqual([{ key: { text: 'Some new signal' }, value: { text: 'yes' } }])
+    expect(other).toEqual([
+      { key: { text: 'Some new signal' }, value: { text: 'yes' } }
+    ])
   })
 })

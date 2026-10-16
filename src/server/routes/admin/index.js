@@ -1,5 +1,9 @@
 import { config } from '#/config/config.js'
-import { runsController, runDetailController, triggerRunController } from './runs-controller.js'
+import {
+  runsController,
+  runDetailController,
+  triggerRunController
+} from './runs-controller.js'
 import {
   importsController,
   uploadImportController,
@@ -13,22 +17,26 @@ const menu = [
   {
     text: 'Runs',
     href: '/admin/runs',
-    description: 'Rule engine run history and progress, and a way to start one by hand.'
+    description:
+      'Rule engine run history and progress, and a way to start one by hand.'
   },
   {
     text: 'SPOL imports',
     href: '/admin/imports',
-    description: 'Upload a SharePoint extract and see which rows it could apply.'
+    description:
+      'Upload a SharePoint extract and see which rows it could apply.'
   },
   {
     text: 'Status',
     href: '/admin/status',
-    description: 'Dependency health, issue counts and when the database was last reset.'
+    description:
+      'Dependency health, issue counts and when the database was last reset.'
   },
   {
     text: 'Reset',
     href: '/admin/reset',
-    description: 'Permanently delete every issue and everything recorded against it.'
+    description:
+      'Permanently delete every issue and everything recorded against it.'
   }
 ]
 
@@ -54,7 +62,11 @@ export const admin = {
 
         { method: 'GET', path: '/admin/imports', ...importsController },
         { method: 'POST', path: '/admin/imports', ...uploadImportController },
-        { method: 'GET', path: '/admin/imports/{id}', ...importDetailController },
+        {
+          method: 'GET',
+          path: '/admin/imports/{id}',
+          ...importDetailController
+        },
 
         { method: 'GET', path: '/admin/status', ...statusController },
 

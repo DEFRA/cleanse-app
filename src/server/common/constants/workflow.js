@@ -76,7 +76,10 @@ const importStatusesById = byId(importStatuses)
 
 const unknown = (id) => ({ id, name: id, colour: 'grey' })
 
-export const describeIssueStatus = (id) => issueStatusesById.get(id) ?? unknown(id)
-export const describeWorkflowStatus = (id) => workflowStatusesById.get(id) ?? unknown(id)
+export const describeIssueStatus = (id) =>
+  issueStatusesById.get(id) ?? unknown(id)
+export const describeWorkflowStatus = (id) =>
+  workflowStatusesById.get(id) ?? unknown(id)
 export const describeRunState = (id) => runStatesById.get(id) ?? unknown(id)
-export const describeImportStatus = (id) => importStatusesById.get(id) ?? unknown(id)
+export const describeImportStatus = (id) =>
+  importStatusesById.get(id) ?? unknown(id)

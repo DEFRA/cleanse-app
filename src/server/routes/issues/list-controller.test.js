@@ -19,7 +19,9 @@ describe('#readFilters', () => {
   })
 
   test('Should accept a single checkbox value as well as several', () => {
-    expect(readFilters({ filtered: 'true', status: 'active' }).status).toEqual(['active'])
+    expect(readFilters({ filtered: 'true', status: 'active' }).status).toEqual([
+      'active'
+    ])
     expect(
       readFilters({ filtered: 'true', status: ['active', 'inactive'] }).status
     ).toEqual(['active', 'inactive'])
@@ -37,7 +39,9 @@ describe('#buildQuery', () => {
   test('Should round-trip the filters it was given', () => {
     const query = buildQuery(readFilters({}), 1)
 
-    expect(readFilters(Object.fromEntries(new URLSearchParams(query)))).toMatchObject({
+    expect(
+      readFilters(Object.fromEntries(new URLSearchParams(query)))
+    ).toMatchObject({
       isDefault: false
     })
     expect(query).toContain('filtered=true')
@@ -79,7 +83,9 @@ describe('#buildPagination', () => {
 
   test('Should insert an ellipsis only where pages are skipped', () => {
     const middle = buildPagination(filters, 10, 20)
-    const numbers = middle.items.filter((item) => !item.ellipsis).map((item) => item.number)
+    const numbers = middle.items
+      .filter((item) => !item.ellipsis)
+      .map((item) => item.number)
 
     expect(numbers).toEqual([1, 9, 10, 11, 20])
     expect(middle.items.filter((item) => item.ellipsis)).toHaveLength(2)

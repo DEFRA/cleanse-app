@@ -29,7 +29,10 @@ function check({ name, state, detail, value }) {
  */
 function buildMatrix(breakdown = []) {
   const lookup = new Map(
-    breakdown.map((entry) => [`${entry.status}|${entry.workflowStatus}`, entry.count])
+    breakdown.map((entry) => [
+      `${entry.status}|${entry.workflowStatus}`,
+      entry.count
+    ])
   )
 
   const rows = workflowStatuses.map((workflow) => {
@@ -51,7 +54,8 @@ function buildMatrix(breakdown = []) {
     columnTotals: issueStatuses.map((status) => ({
       status: status.id,
       count: rows.reduce(
-        (sum, row) => sum + row.cells.find((cell) => cell.status === status.id).count,
+        (sum, row) =>
+          sum + row.cells.find((cell) => cell.status === status.id).count,
         0
       )
     }))
@@ -77,7 +81,10 @@ export const statusController = {
       }
 
       // The one dependency this page cannot ask the backend about is the backend itself.
-      logger.error({ err: error }, 'Admin status could not reach the Cleanse backend')
+      logger.error(
+        { err: error },
+        'Admin status could not reach the Cleanse backend'
+      )
       connection = check({
         name: 'Cleanse service connection',
         state: 'failed',
@@ -111,9 +118,17 @@ export const statusController = {
       )
     } else {
       // Everything downstream is unknowable from here, and says so rather than guessing.
-      for (const name of ['Database provider', 'Database connection', 'KRDS connection']) {
+      for (const name of [
+        'Database provider',
+        'Database connection',
+        'KRDS connection'
+      ]) {
         checks.push(
-          check({ name, state: 'unknown', detail: 'The Cleanse backend did not answer.' })
+          check({
+            name,
+            state: 'unknown',
+            detail: 'The Cleanse backend did not answer.'
+          })
         )
       }
     }

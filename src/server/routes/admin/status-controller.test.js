@@ -117,7 +117,10 @@ describe('#admin status', () => {
 
   test('Should mark an unrecognised state as unknown rather than trusting it', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      json({ ...diagnostics, krds: { ...diagnostics.krds, state: 'something-new' } })
+      json({
+        ...diagnostics,
+        krds: { ...diagnostics.krds, state: 'something-new' }
+      })
     )
 
     const { result } = await get()

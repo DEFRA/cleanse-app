@@ -11,7 +11,11 @@ export const runsController = {
     const groupId = config.get('cleanse.groupId')
     const pageNumber = Math.max(1, Number.parseInt(request.query.page, 10) || 1)
 
-    const runs = await request.cleanse.searchRuns({ groupId, pageNumber, pageSize })
+    const runs = await request.cleanse.searchRuns({
+      groupId,
+      pageNumber,
+      pageSize
+    })
     const items = runs.items.map(decorate)
 
     return h.view('admin/runs', {
@@ -20,7 +24,10 @@ export const runsController = {
       runs: items,
       total: runs.totalCount,
       inFlight: items.some((run) => run.state === 'running'),
-      pagination: buildPagination(pageNumber, Math.ceil(runs.totalCount / pageSize)),
+      pagination: buildPagination(
+        pageNumber,
+        Math.ceil(runs.totalCount / pageSize)
+      ),
       notification: request.yar.flash('notification')[0] ?? null,
       error: request.yar.flash('runError')[0] ?? null
     })
@@ -39,7 +46,10 @@ export const triggerRunController = {
   async handler(request, h) {
     try {
       await request.cleanse.triggerRun()
-      request.yar.flash('notification', 'Rule run started. Refresh to see its progress.')
+      request.yar.flash(
+        'notification',
+        'Rule run started. Refresh to see its progress.'
+      )
     } catch (error) {
       if (!(error instanceof CleanseApiError)) {
         throw error
@@ -59,8 +69,14 @@ function buildPagination(pageNumber, totalPages) {
   }
 
   return {
-    previous: pageNumber > 1 ? { href: `/admin/runs?page=${pageNumber - 1}` } : undefined,
-    next: pageNumber < totalPages ? { href: `/admin/runs?page=${pageNumber + 1}` } : undefined,
+    previous:
+      pageNumber > 1
+        ? { href: `/admin/runs?page=${pageNumber - 1}` }
+        : undefined,
+    next:
+      pageNumber < totalPages
+        ? { href: `/admin/runs?page=${pageNumber + 1}` }
+        : undefined,
     items: Array.from({ length: totalPages }, (_, index) => ({
       number: index + 1,
       href: `/admin/runs?page=${index + 1}`,

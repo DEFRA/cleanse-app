@@ -21,7 +21,9 @@ export function govukDateTime(value) {
 
 /** Whole days from today until a date, floored at zero. Used for suppression countdowns. */
 export function daysUntil(value) {
-  return value ? Math.max(0, differenceInCalendarDays(toDate(value), new Date())) : 0
+  return value
+    ? Math.max(0, differenceInCalendarDays(toDate(value), new Date()))
+    : 0
 }
 
 /** Seconds as "1h 7m 3s", dropping the units that would read as zero. */

@@ -24,7 +24,9 @@ export function readFilters(query = {}) {
 
   return {
     status: chosen ? toArray(query.status) : ['active'],
-    workflowStatus: chosen ? toArray(query.workflowStatus) : [...openWorkflowStatuses],
+    workflowStatus: chosen
+      ? toArray(query.workflowStatus)
+      : [...openWorkflowStatuses],
     ruleId: query.ruleId ?? 'all',
     searchTerm: (query.searchTerm ?? '').trim(),
     page: Math.max(1, Number.parseInt(query.page, 10) || 1),
@@ -37,7 +39,9 @@ export function buildQuery(filters, page) {
   const params = new URLSearchParams({ filtered: 'true' })
 
   filters.status.forEach((value) => params.append('status', value))
-  filters.workflowStatus.forEach((value) => params.append('workflowStatus', value))
+  filters.workflowStatus.forEach((value) =>
+    params.append('workflowStatus', value)
+  )
 
   if (filters.ruleId !== 'all') {
     params.append('ruleId', filters.ruleId)
@@ -63,8 +67,16 @@ export function buildPagination(filters, pageNumber, totalPages) {
     return null
   }
 
-  const wanted = new Set([1, totalPages, pageNumber - 1, pageNumber, pageNumber + 1])
-  const pages = [...wanted].filter((page) => page >= 1 && page <= totalPages).sort((a, b) => a - b)
+  const wanted = new Set([
+    1,
+    totalPages,
+    pageNumber - 1,
+    pageNumber,
+    pageNumber + 1
+  ])
+  const pages = [...wanted]
+    .filter((page) => page >= 1 && page <= totalPages)
+    .sort((a, b) => a - b)
 
   const items = []
   let previous = 0
@@ -85,8 +97,14 @@ export function buildPagination(filters, pageNumber, totalPages) {
 
   return {
     items,
-    previous: pageNumber > 1 ? { href: buildQuery(filters, pageNumber - 1) } : undefined,
-    next: pageNumber < totalPages ? { href: buildQuery(filters, pageNumber + 1) } : undefined
+    previous:
+      pageNumber > 1
+        ? { href: buildQuery(filters, pageNumber - 1) }
+        : undefined,
+    next:
+      pageNumber < totalPages
+        ? { href: buildQuery(filters, pageNumber + 1) }
+        : undefined
   }
 }
 
@@ -111,10 +129,16 @@ export const listController = {
     ])
 
     const totalPages = Math.ceil(results.totalCount / results.pageSize)
-    const from = results.totalCount === 0 ? 0 : (results.pageNumber - 1) * results.pageSize + 1
+    const from =
+      results.totalCount === 0
+        ? 0
+        : (results.pageNumber - 1) * results.pageSize + 1
 
     // Lets "Back to issues" return to the same filters and the same page.
-    request.yar.set('lastIssuesQuery', request.url.pathname + request.url.search)
+    request.yar.set(
+      'lastIssuesQuery',
+      request.url.pathname + request.url.search
+    )
 
     return h.view('issues/list', {
       pageTitle: 'Issues',

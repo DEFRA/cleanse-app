@@ -24,17 +24,49 @@ export const issues = {
         { method: 'POST', path: '/issues/{id}/start', ...startController },
         { method: 'POST', path: '/issues/{id}/reopen', ...reopenController },
 
-        { method: 'GET', path: '/issues/{id}/resolve', handler: resolveController.get },
-        { method: 'POST', path: '/issues/{id}/resolve', handler: resolveController.post },
+        {
+          method: 'GET',
+          path: '/issues/{id}/resolve',
+          handler: resolveController.get
+        },
+        {
+          method: 'POST',
+          path: '/issues/{id}/resolve',
+          handler: resolveController.post
+        },
 
-        { method: 'GET', path: '/issues/{id}/ignore', handler: ignoreController.get },
-        { method: 'POST', path: '/issues/{id}/ignore', handler: ignoreController.post },
+        {
+          method: 'GET',
+          path: '/issues/{id}/ignore',
+          handler: ignoreController.get
+        },
+        {
+          method: 'POST',
+          path: '/issues/{id}/ignore',
+          handler: ignoreController.post
+        },
 
-        { method: 'GET', path: '/issues/{id}/suppress', handler: suppressController.get },
-        { method: 'POST', path: '/issues/{id}/suppress', handler: suppressController.post },
+        {
+          method: 'GET',
+          path: '/issues/{id}/suppress',
+          handler: suppressController.get
+        },
+        {
+          method: 'POST',
+          path: '/issues/{id}/suppress',
+          handler: suppressController.post
+        },
 
-        { method: 'GET', path: '/issues/{id}/note', handler: noteController.get },
-        { method: 'POST', path: '/issues/{id}/note', handler: noteController.post }
+        {
+          method: 'GET',
+          path: '/issues/{id}/note',
+          handler: noteController.get
+        },
+        {
+          method: 'POST',
+          path: '/issues/{id}/note',
+          handler: noteController.post
+        }
       ])
     }
   }
