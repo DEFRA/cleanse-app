@@ -266,6 +266,21 @@ export const config = convict({
       default: 'cts-sam',
       env: 'CLEANSE_GROUP_ID'
     }
+  },
+  demo: {
+    anonymise: {
+      doc: 'Replace personal data from the backend with stable fake values before it reaches any page. For demos only',
+      format: Boolean,
+      default: false,
+      env: 'DEMO_ANONYMISE'
+    },
+    anonymiseKey: {
+      doc: 'Secret that seeds the fake values. The same key always gives the same fakes; a different key gives different ones. Required when anonymise is on',
+      format: String,
+      default: '',
+      sensitive: true,
+      env: 'DEMO_ANONYMISE_KEY'
+    }
   }
 })
 

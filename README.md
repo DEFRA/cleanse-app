@@ -10,6 +10,7 @@ Core delivery platform Node.js Frontend Template.
   - [Node.js](#nodejs)
 - [Server-side Caching](#server-side-caching)
 - [Redis](#redis)
+- [Demo anonymisation](#demo-anonymisation)
 - [Local Development](#local-development)
   - [Setup](#setup)
   - [Development](#development)
@@ -70,6 +71,32 @@ HTTPS_PROXY=...
 NO_PROXY=...
 
 No additional proxy configuration is required in the service.
+
+## Demo anonymisation
+
+The issues the service shows are built from production data. To demo it without showing personal data, start it with:
+
+```bash
+DEMO_ANONYMISE=true DEMO_ANONYMISE_KEY=<any secret string> npm run dev
+```
+
+Every backend response is then rewritten before any page renders it (see
+`src/server/common/helpers/cleanse/anonymise.js`):
+
+- CPHs, keeper surnames, postcodes, holding names and holding IDs are replaced with realistic fakes. The CPH keeps its
+  county prefix, and the location number uses the same fake CPH.
+- Notes, comments and people's names are replaced with plausible fake text and names. Failure messages, stack traces and
+  import rejection details are shown as "Hidden in demo mode."
+- Rule numbers, error codes, premises types, counties, species codes, counts, dates and statuses are shown as they are.
+- Context fields the anonymiser doesn't know about are masked character by character, and a client method without a rule
+  stops the service from starting, so new data cannot leak through unnoticed.
+
+The fakes come from an HMAC of each real value under `DEMO_ANONYMISE_KEY`, so the same value always gets the same fake
+while the key is unchanged, and the fakes cannot be traced back without the key. Searching for a fake CPH, surname,
+postcode or holding name that has already been shown searches for the real value behind it.
+
+Only what the service displays is anonymised. Logs, uploaded CSVs and anything typed into the service are still real,
+and actions taken during a demo change real issues.
 
 ## Local Development
 
