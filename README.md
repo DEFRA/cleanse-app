@@ -80,6 +80,8 @@ The issues the service shows are built from production data. To demo it without 
 DEMO_ANONYMISE=true DEMO_ANONYMISE_KEY=<any secret string> npm run dev
 ```
 
+On Windows, `.\dev-up.ps1 -Demo` does the same, using a SHA-256 hash of the machine name as the key.
+
 Every backend response is then rewritten before any page renders it (see
 `src/server/common/helpers/cleanse/anonymise.js`):
 
