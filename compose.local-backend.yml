@@ -1,12 +1,18 @@
-# Layered on by ./dev-docker-up.ps1 -Backend local. Joins the backend stack's network, where the
-# backend answers as http://cleanse:8085, so that stack (../cleanse) has to be running first.
+# Layered on by ./dev-docker-up.ps1 -Backend local, the default, to run the front end and the
+# back end as one stack. It brings in the backend's own compose.yml from ../cleanse:
+#   cleanse    the backend, built from ../cleanse; this service calls it as http://cleanse:8085
+#   postgres   its database, in this stack's own volume, apart from the backend stack's
+#   liquibase  applies the backend's changelog to the database, then exits
+#   floci      the S3 emulator holding the imports bucket
+# The backend repository must be checked out next to this one. Its compose.yml stays the only
+# definition of the backend: include reads its relative paths from ../cleanse, not from here.
+include:
+  - path: ../cleanse/compose.yml
+
 services:
   cleanse-app:
     networks:
-      - default
-      - cleanse
-
-networks:
-  cleanse:
-    name: cleanse_cdp-tenant
-    external: true
+      - cdp-tenant
+    depends_on:
+      cleanse:
+        condition: service_healthy

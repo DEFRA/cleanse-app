@@ -155,7 +155,8 @@ The service needs a Cleanse backend. On Windows, `dev-up.ps1` runs `npm run dev`
 .\dev-up.ps1 -Demo           # Either backend, with its data anonymised (see Demo anonymisation)
 ```
 
-The local backend stack is started from the `cleanse` repository, with `.\dev-docker-up.ps1`.
+The local backend stack is started from the `cleanse` repository, with `.\dev-docker-up.ps1`. To run this service and
+the backend in Docker as one stack instead, see [Docker Compose](#docker-compose).
 
 `-Backend dev` calls `https://ephemeral-protected.api.dev.cdp-int.defra.cloud/cleanse`. The gateway can only be reached
 from the DEFRA network. It needs two User environment variables:
@@ -251,31 +252,50 @@ docker run -p 3000:3000 cleanse-app
 
 ### Docker Compose
 
-`compose.yml` runs this service on its own, from the production image, in the same way as CDP. It sets
-`NODE_ENV=production` and logs ECS JSON. The database, storage and KRDS belong to the Cleanse backend, which has its own
-stack in the `cleanse` repository, so this stack does not start them.
+`compose.yml` runs this service from the production image, in the same way as CDP. It sets `NODE_ENV=production` and
+logs ECS JSON.
 
-On Windows, `dev-docker-up.ps1` builds the image and starts the service. It then waits for the service's health check,
-and checks the home page and the status page:
+By default the Cleanse backend runs in the same stack. `compose.local-backend.yml` includes the backend's own
+`compose.yml` from the `cleanse` repository, which must be checked out next to this one, as `../cleanse`. The stack then
+has these services:
+
+| Service       | What it is                                                         | Port |
+| ------------- | ------------------------------------------------------------------ | ---- |
+| `cleanse-app` | This service, which calls the backend as `http://cleanse:8085`     | 3000 |
+| `cleanse`     | The backend, built from `../cleanse`                               | 8085 |
+| `postgres`    | The backend's database, kept in the stack's `postgres-data` volume | 5432 |
+| `liquibase`   | Applies the backend's changelog to the database, then exits        |      |
+| `floci`       | The S3 emulator holding the imports bucket                         | 4566 |
+
+On Windows, `dev-docker-up.ps1` builds the images and starts the stack. It then waits for the health checks, checks that
+the backend and the home page answer, and reads back the status page:
 
 ```powershell
-.\dev-docker-up.ps1                    # The local backend stack, which must already be running
-.\dev-docker-up.ps1 -Backend dev       # cleanse in CDP's dev environment, as for dev-up.ps1
-.\dev-docker-up.ps1 -NoBuild -Follow   # Start without rebuilding, then follow the logs
-.\dev-docker-up.ps1 -Down              # Stop
+.\dev-docker-up.ps1                         # The whole stack, with the backend built from ../cleanse
+.\dev-docker-up.ps1 -KrdsSnapshot <path>    # The same, with the backend's rules engine reading a KRDS snapshot
+.\dev-docker-up.ps1 -Backend dev            # This service alone, against cleanse in CDP's dev environment
+.\dev-docker-up.ps1 -NoBuild -Follow        # Start without rebuilding, then follow both services' logs
+.\dev-docker-up.ps1 -Down                   # Stop, keeping the database. Add -Reset to delete it
 ```
 
-Without the script, start the backend stack first, then run:
+The stack's database starts empty. To fill it, start the stack with `-KrdsSnapshot`, then start a rule run from the Runs
+page. `-KrdsSnapshot` defaults to the `CLEANSE_KRDS_SNAPSHOT` environment variable, so setting that keeps the rules
+engine on whenever the stack is restarted.
+
+The backend's own stack, which the `cleanse` repository starts, publishes the same ports, so stop it first. Its
+database is separate from this stack's, and is kept.
+
+Without the script, run:
 
 ```bash
 docker compose -f compose.yml -f compose.local-backend.yml up --build --detach --wait
 ```
 
-`compose.local-backend.yml` connects the service to the backend stack's `cleanse_cdp-tenant` network. On that network,
-the backend's address is `http://cleanse:8085`.
+To turn the rules engine on, set `CLEANSE_KRDS_SNAPSHOT` to the snapshot's path and add
+`-f ../cleanse/compose.krds.yml`.
 
-The service is published on port 3000. To use another port, set `CLEANSE_APP_PORT`. Cookies are not marked as Secure,
-because the service is served over plain HTTP.
+To use other ports, set `CLEANSE_APP_PORT`, `CLEANSE_PORT`, `CLEANSE_POSTGRES_PORT` and `CLEANSE_FLOCI_PORT`. Cookies
+are not marked as Secure, because the service is served over plain HTTP.
 
 ### Dependabot
 

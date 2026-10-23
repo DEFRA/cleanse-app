@@ -1,7 +1,7 @@
 # Runs cleanse-app the way CDP does: the production image, NODE_ENV=production and ECS JSON logs.
 # Start it with ./dev-docker-up.ps1, which picks the backend:
-#   -Backend local  the backend's own Docker stack (../cleanse, ./dev-docker-up.ps1), joined through
-#                   compose.local-backend.yml, where the backend answers as http://cleanse:8085
+#   -Backend local  the backend built from ../cleanse, with its database and S3 emulator, all in
+#                   this one stack; compose.local-backend.yml adds them. The default.
 #   -Backend dev    cleanse in CDP's dev environment, through CDP's developer ephemeral gateway
 # Host port 3000 can be moved with CLEANSE_APP_PORT.
 name: cleanse-app
