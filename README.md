@@ -251,17 +251,31 @@ docker run -p 3000:3000 cleanse-app
 
 ### Docker Compose
 
-A local environment with:
+`compose.yml` runs this service on its own, from the production image, in the same way as CDP. It sets
+`NODE_ENV=production` and logs ECS JSON. The database, storage and KRDS belong to the Cleanse backend, which has its own
+stack in the `cleanse` repository, so this stack does not start them.
 
-- Floci (replacing Localstack) for AWS services (S3, SQS)
-- Redis
-- MongoDB
-- This service.
-- A commented out backend example.
+On Windows, `dev-docker-up.ps1` builds the image and starts the service. It then waits for the service's health check,
+and checks the home page and the status page:
+
+```powershell
+.\dev-docker-up.ps1                    # The local backend stack, which must already be running
+.\dev-docker-up.ps1 -Backend dev       # cleanse in CDP's dev environment, as for dev-up.ps1
+.\dev-docker-up.ps1 -NoBuild -Follow   # Start without rebuilding, then follow the logs
+.\dev-docker-up.ps1 -Down              # Stop
+```
+
+Without the script, start the backend stack first, then run:
 
 ```bash
-docker compose up --build -d
+docker compose -f compose.yml -f compose.local-backend.yml up --build --detach --wait
 ```
+
+`compose.local-backend.yml` connects the service to the backend stack's `cleanse_cdp-tenant` network. On that network,
+the backend's address is `http://cleanse:8085`.
+
+The service is published on port 3000. To use another port, set `CLEANSE_APP_PORT`. Cookies are not marked as Secure,
+because the service is served over plain HTTP.
 
 ### Dependabot
 
