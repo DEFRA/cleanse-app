@@ -13,6 +13,7 @@ Core delivery platform Node.js Frontend Template.
 - [Local Development](#local-development)
   - [Setup](#setup)
   - [Development](#development)
+  - [Choosing a backend](#choosing-a-backend)
   - [Production](#production)
   - [Npm scripts](#npm-scripts)
   - [Update dependencies](#update-dependencies)
@@ -118,6 +119,38 @@ To run the application in `development` mode run:
 ```bash
 npm run dev
 ```
+
+### Choosing a backend
+
+The service needs a Cleanse backend. On Windows, `dev-up.ps1` runs `npm run dev` against one:
+
+```powershell
+.\dev-up.ps1                 # The local backend stack, on http://localhost:8085
+.\dev-up.ps1 -Backend dev    # cleanse in CDP's dev environment, through CDP's developer gateway
+.\dev-up.ps1 -Demo           # Either backend, with its data anonymised (see Demo anonymisation)
+```
+
+The local backend stack is started from the `cleanse` repository, with `.\dev-docker-up.ps1`.
+
+`-Backend dev` calls `https://ephemeral-protected.api.dev.cdp-int.defra.cloud/cleanse`. The gateway can only be reached
+from the DEFRA network. It needs two User environment variables:
+
+| Variable               | Value                                                                                        |
+| ---------------------- | -------------------------------------------------------------------------------------------- |
+| `CDP_EPHEMERAL_GW_KEY` | Your developer API key for dev, from your user profile in the CDP Portal. It lasts 24 hours. |
+| `CLEANSE_APIKEY`       | cleanse's `Auth__ApiKey__Key` secret in dev                                                  |
+
+The script checks both keys before it starts the service. If a key is refused, it stops and explains what to fix.
+Anything you do against dev changes the data in dev.
+
+Without the script, set the service's own variables:
+
+| Variable              | Purpose                                                 | Default                                    |
+| --------------------- | ------------------------------------------------------- | ------------------------------------------ |
+| `CLEANSE_API_URL`     | The backend's base URL                                  | `http://localhost:8085`                    |
+| `CLEANSE_API_AUTH`    | `apiKey`, or `stsJwt` on CDP                            | `stsJwt` in production, otherwise `apiKey` |
+| `CLEANSE_API_KEY`     | Sent to the backend as `x-cleanse-api-key`              | `local-development-key`                    |
+| `CLEANSE_GATEWAY_KEY` | Sent as `x-api-key`, for the CDP developer gateway only | Not sent                                   |
 
 ### Production
 

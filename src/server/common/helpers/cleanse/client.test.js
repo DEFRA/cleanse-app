@@ -76,6 +76,40 @@ describe('#createCleanseClient query building', () => {
   })
 })
 
+describe('#createCleanseClient through the CDP developer gateway', () => {
+  // Generated, so no literal in the repository reads as a credential to secret scanning.
+  const gatewayKey = crypto.randomUUID()
+
+  test('Should send the developer key the gateway expects alongside the service credential', async () => {
+    const fetchSpy = stubFetch(ok({}))
+    const client = createCleanseClient({
+      baseUrl:
+        'https://ephemeral-protected.api.dev.cdp-int.defra.cloud/cleanse/',
+      auth: { headers: async () => ({ 'x-cleanse-api-key': 'service' }) },
+      gatewayKey
+    })
+
+    await client.getRules()
+
+    expect(fetchSpy.mock.calls[0][0]).toBe(
+      'https://ephemeral-protected.api.dev.cdp-int.defra.cloud/cleanse/v1/rules'
+    )
+    expect(fetchSpy.mock.calls[0][1].headers).toMatchObject({
+      'x-api-key': gatewayKey,
+      'x-cleanse-api-key': 'service'
+    })
+  })
+
+  test('Should send no gateway key when none is configured, as on CDP', async () => {
+    const fetchSpy = stubFetch(ok({}))
+    const client = createCleanseClient({ auth: { headers: async () => ({}) } })
+
+    await client.getRules()
+
+    expect(fetchSpy.mock.calls[0][1].headers).not.toHaveProperty('x-api-key')
+  })
+})
+
 describe('#createCleanseClient error handling', () => {
   test('Should surface the stable code from the problem document', async () => {
     stubFetch(
@@ -115,5 +149,27 @@ describe('#createCleanseClient error handling', () => {
       status: 503,
       code: 'api.unreachable'
     })
+  })
+
+  /** Deployed, the credential is an STS token, and failing to mint one must not crash a page. */
+  test('Should turn a credential that cannot be had into an error a page can show', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+    const client = createCleanseClient({
+      auth: {
+        name: 'stsJwt',
+        headers: async () => {
+          throw new Error('Could not load credentials from any providers')
+        }
+      }
+    })
+
+    await expect(client.getRules()).rejects.toMatchObject({
+      name: 'CleanseApiError',
+      status: 503,
+      code: 'api.credentials_unavailable',
+      detail:
+        'Could not get an STS web identity token: Could not load credentials from any providers'
+    })
+    expect(fetchSpy).not.toHaveBeenCalled()
   })
 })

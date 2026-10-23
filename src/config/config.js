@@ -195,6 +195,13 @@ export const config = convict({
       sensitive: true,
       env: 'CLEANSE_API_KEY'
     },
+    gatewayKey: {
+      doc: "Developer key for CDP's ephemeral API gateway, sent as x-api-key. Local development only: it lets a front-end on a developer's machine call a deployed backend through https://ephemeral-protected.api.<env>.cdp-int.defra.cloud/cleanse. Never set on CDP",
+      format: String,
+      default: '',
+      sensitive: true,
+      env: 'CLEANSE_GATEWAY_KEY'
+    },
     timeout: {
       doc: 'Milliseconds to wait for the backend before giving up',
       format: Number,

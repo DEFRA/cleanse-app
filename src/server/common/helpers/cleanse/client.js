@@ -4,6 +4,12 @@ import { createLogger } from '#/server/common/helpers/logging/logger.js'
 
 const logger = createLogger()
 
+/** How each auth strategy's credential is named in an error a person will read. */
+const credentialNames = {
+  stsJwt: 'an STS web identity token',
+  apiKey: 'the API key'
+}
+
 /**
  * A failure the backend described, rather than a transport problem. Carries the stable `code`
  * from the problem document so a caller can branch on it without matching on prose.
@@ -72,7 +78,29 @@ export function createCleanseClient(options = {}) {
   )
   const timeout = options.timeout ?? config.get('cleanse.timeout')
   const auth = options.auth ?? createAuthStrategy()
+  const gatewayKey = options.gatewayKey ?? config.get('cleanse.gatewayKey')
   const traceHeader = config.get('tracing.header')
+
+  /**
+   * Getting a credential can fail by itself, most often an STS token that cannot be minted. That
+   * surfaces like an unreachable backend, as an error a page can show, rather than as a crash.
+   */
+  async function credentials() {
+    try {
+      return await auth.headers()
+    } catch (error) {
+      logger.error(
+        { err: error },
+        'Could not get a credential for the Cleanse API'
+      )
+      throw new CleanseApiError({
+        status: 503,
+        code: 'api.credentials_unavailable',
+        title: 'Could not authenticate to the Cleanse service',
+        detail: `Could not get ${credentialNames[auth.name] ?? 'a credential'}: ${error.message}`
+      })
+    }
+  }
 
   async function send(
     method,
@@ -82,7 +110,9 @@ export function createCleanseClient(options = {}) {
     const url = `${baseUrl}${path}${toQuery(query)}`
     const headers = {
       accept: 'application/json',
-      ...(await auth.headers()),
+      // CDP's developer gateway, for a front-end on a developer's machine calling a deployed backend.
+      ...(gatewayKey ? { 'x-api-key': gatewayKey } : {}),
+      ...(await credentials()),
       ...extra
     }
 
