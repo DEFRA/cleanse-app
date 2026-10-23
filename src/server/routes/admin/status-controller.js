@@ -225,7 +225,9 @@ export const statusController = {
       connection,
       dependencyCheck('Database', diagnostics, 'database'),
       dependencyCheck('Import storage', diagnostics, 'storage'),
-      dependencyCheck('KRDS', diagnostics, 'krds')
+      dependencyCheck('KRDS health', diagnostics, 'krds'),
+      // The health check is anonymous; only this one proves the backend's key gets it in.
+      dependencyCheck('KRDS read access', diagnostics, 'krdsAccess')
     ]
 
     return h.view('admin/status', {

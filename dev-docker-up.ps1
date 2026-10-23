@@ -301,8 +301,8 @@ function Test-Backend([int]$Port, [string]$ServiceKey) {
     throw "The backend did not answer as expected: $($_.Exception.Message) See: docker compose --project-name $project logs cleanse"
   }
 
-  Write-Host ('    GET /v1/diagnostics  database {0}, storage {1}, KRDS {2}' -f
-    $diagnostics.database.state, $diagnostics.storage.state, $diagnostics.krds.state)
+  Write-Host ('    GET /v1/diagnostics  database {0}, storage {1}, KRDS {2}, KRDS read {3}' -f
+    $diagnostics.database.state, $diagnostics.storage.state, $diagnostics.krds.state, $diagnostics.krdsAccess.state)
 
   foreach ($dependency in 'database', 'storage') {
     if ($diagnostics.$dependency.state -ne 'ok') {
@@ -310,8 +310,12 @@ function Test-Backend([int]$Port, [string]$ServiceKey) {
     }
   }
 
-  if ($rulesOn -and $diagnostics.krds.state -ne 'ok') {
-    throw "The rules engine cannot read the snapshot: $($diagnostics.krds.detail)"
+  if ($rulesOn) {
+    foreach ($probe in 'krds', 'krdsAccess') {
+      if ($diagnostics.$probe.state -ne 'ok') {
+        throw "The rules engine cannot read the snapshot: $($diagnostics.$probe.detail)"
+      }
+    }
   }
 }
 

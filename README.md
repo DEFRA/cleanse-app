@@ -100,14 +100,19 @@ and actions taken during a demo change real issues.
 `/admin/status` shows whether the service is working, and is the first place to look when it is not. A tag at the top
 sums up the checks: a red tag counts the problems, and a grey tag counts the checks that could not be confirmed.
 
-| Check           | What it means                                                                         |
-| --------------- | ------------------------------------------------------------------------------------- |
-| Cleanse service | Whether this service could call the backend's `/v1/diagnostics`, and how long it took |
-| Database        | The backend's PostgreSQL database, as the backend reports it                          |
-| Import storage  | The backend's S3 bucket for imports, as the backend reports it                        |
-| KRDS            | The Keeper Reference Data Service, which the backend checks through its `/health`     |
+| Check            | What it means                                                                          |
+| ---------------- | -------------------------------------------------------------------------------------- |
+| Cleanse service  | Whether this service could call the backend's `/v1/diagnostics`, and how long it took  |
+| Database         | The backend's PostgreSQL database, as the backend reports it                           |
+| Import storage   | The backend's S3 bucket for imports, as the backend reports it                         |
+| KRDS health      | Whether the KRDS Data Bridge is up, from its own `/health`, which needs no key         |
+| KRDS read access | Whether the backend can read KRDS with its API key: the genuine connection a run needs |
 
-If the backend cannot be reached, its three checks show as not confirmed rather than failed. The reason is shown with the
+KRDS health passes even when the backend's KRDS API key is wrong or missing, because the bridge's health check needs no
+key. KRDS read access asks the Data Bridge for its latest snapshot with the key, as a rule run does, and names that
+snapshot, its size and when it was last modified. A refused key, or no snapshot to read, shows there as a problem.
+
+If the backend cannot be reached, its four checks show as not confirmed rather than failed. The reason is shown with the
 failure: for example, a 401 means the backend refused this service's credential, and a 403 from the developer gateway
 means the developer key has expired.
 
