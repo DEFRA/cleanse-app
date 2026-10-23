@@ -8,8 +8,7 @@ Core delivery platform Node.js Frontend Template.
 
 - [Requirements](#requirements)
   - [Node.js](#nodejs)
-- [Server-side Caching](#server-side-caching)
-- [Redis](#redis)
+- [Sessions](#sessions)
 - [Demo anonymisation](#demo-anonymisation)
 - [Local Development](#local-development)
   - [Setup](#setup)
@@ -41,24 +40,18 @@ cd cleanse-app
 nvm use
 ```
 
-## Server-side Caching
+## Sessions
 
-We use Catbox for server-side caching. By default the service will use CatboxRedis when deployed and CatboxMemory for
-local development.
-You can override the default behaviour by setting the `SESSION_CACHE_ENGINE` environment variable to either `redis` or
-`memory`.
+Sessions are held by the browser, in an encrypted cookie named `session`, rather than in a server-side cache. The
+service needs no Redis, and any instance can serve any request.
 
-Please note: CatboxMemory (`memory`) is _not_ suitable for production use! The cache will not be shared between each
-instance of the service and it will not persist between restarts.
+The cookie is sealed with `SESSION_COOKIE_PASSWORD`. Set it as a secret in each CDP environment, because the default in
+`src/config/config.js` is public.
 
-## Redis
-
-Redis is an in-memory key-value store. Every instance of a service has access to the same Redis key-value store similar
-to how services might have a database (or MongoDB). All frontend services are given access to a namespaced prefixed that
-matches the service name. e.g. `my-service` will have access to everything in Redis that is prefixed with `my-service`.
-
-If your service does not require a session cache to be shared between instances or if you don't require Redis, you can
-disable setting `SESSION_CACHE_ENGINE=false` or changing the default value in `src/config/index.js`.
+Browsers limit a cookie to about 4KB, so sessions only carry small values: flash notifications, and the issues list
+query that "Back to issues" returns to. A query of more than 1,000 characters is not remembered. A session larger than
+3,500 bytes would move to one instance's memory, where the other instances could not see it.
+`src/server/plugins/session.test.js` checks that the largest session the service stores still fits.
 
 ## Proxy
 

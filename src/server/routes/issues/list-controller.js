@@ -108,6 +108,28 @@ export function buildPagination(filters, pageNumber, totalPages) {
   }
 }
 
+/** Generous for any real set of filters; see the session plugin for why there is a limit. */
+export const maxRememberedQueryLength = 1000
+
+/**
+ * The list URL to return to from an issue. Sessions live in the cookie, so a query too long to
+ * carry is dropped in favour of the plain list rather than stored.
+ */
+export function rememberableQuery(url) {
+  const full = url.pathname + url.search
+  return full.length <= maxRememberedQueryLength ? full : url.pathname
+}
+
+/**
+ * The remembered list URL to link back to. The session comes back from the browser, so anything
+ * that is not the issues list, such as another site or a javascript: URL, is replaced by it.
+ */
+export function issuesBackLink(remembered) {
+  return typeof remembered === 'string' && /^\/issues(?:\?|$)/.test(remembered)
+    ? remembered
+    : '/issues'
+}
+
 export const listController = {
   async handler(request, h) {
     const filters = readFilters(request.query)
@@ -135,10 +157,7 @@ export const listController = {
         : (results.pageNumber - 1) * results.pageSize + 1
 
     // Lets "Back to issues" return to the same filters and the same page.
-    request.yar.set(
-      'lastIssuesQuery',
-      request.url.pathname + request.url.search
-    )
+    request.yar.set('lastIssuesQuery', rememberableQuery(request.url))
 
     return h.view('issues/list', {
       pageTitle: 'Issues',
