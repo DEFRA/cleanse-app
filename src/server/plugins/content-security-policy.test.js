@@ -1,6 +1,7 @@
 import { vi } from 'vitest'
 
 import { createServer } from '#/server/server.js'
+import { signedIn } from '#/test-helpers/sign-in.js'
 
 // The header is only set on a successful response, so the backend call the home page makes
 // has to be stubbed or this asserts against a 500.
@@ -37,7 +38,8 @@ describe('#contentSecurityPolicy', () => {
   test('Should set the CSP policy header', async () => {
     const resp = await server.inject({
       method: 'GET',
-      url: '/'
+      url: '/',
+      auth: signedIn
     })
 
     expect(resp.statusCode).toBe(200)

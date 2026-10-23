@@ -1,9 +1,14 @@
+import { randomUUID } from 'node:crypto'
+
+import { config } from '#/config/config.js'
 import { createServer } from '#/server/server.js'
+import { isSignedInTo, signIn } from '#/server/plugins/auth.js'
 import { maxRememberedQueryLength } from '#/server/routes/issues/list-controller.js'
 
 /**
  * Two instances, as on CDP. Neither holds any session state of its own, so whichever instance
- * the load balancer picks can serve the next request: the cookie carries everything.
+ * the load balancer picks can serve the next request: the cookie carries everything, sign-in
+ * included.
  */
 describe('#session', () => {
   let first
@@ -16,7 +21,13 @@ describe('#session', () => {
       {
         method: 'GET',
         path: '/test/session/write',
+        options: { auth: false },
         handler(request, h) {
+          if (request.query.signIn) {
+            signIn(request, 'service')
+            signIn(request, 'admin')
+          }
+
           request.yar.flash('notification', request.query.message)
           request.yar.set('lastIssuesQuery', request.query.query ?? '/issues')
           return h.response('written')
@@ -25,10 +36,12 @@ describe('#session', () => {
       {
         method: 'GET',
         path: '/test/session/read',
+        options: { auth: false },
         handler(request) {
           return {
             notification: request.yar.flash('notification')[0] ?? null,
-            lastIssuesQuery: request.yar.get('lastIssuesQuery') ?? null
+            lastIssuesQuery: request.yar.get('lastIssuesQuery') ?? null,
+            signedIn: isSignedInTo(request, 'admin')
           }
         }
       }
@@ -39,6 +52,10 @@ describe('#session', () => {
   }
 
   beforeAll(async () => {
+    // Generated: a literal password reads as a leaked credential to secret scanning.
+    config.set('auth.password', randomUUID())
+    config.set('auth.adminPassword', randomUUID())
+
     first = await instance()
     second = await instance()
   })
@@ -46,6 +63,9 @@ describe('#session', () => {
   afterAll(async () => {
     await first.stop({ timeout: 0 })
     await second.stop({ timeout: 0 })
+
+    config.set('auth.password', '')
+    config.set('auth.adminPassword', '')
   })
 
   const sessionCookie = (response) =>
@@ -71,13 +91,15 @@ describe('#session', () => {
 
     expect(result).toEqual({
       notification: 'Issue updated.',
-      lastIssuesQuery: '/issues'
+      lastIssuesQuery: '/issues',
+      signedIn: false
     })
   })
 
   /**
    * Above its size limit yar would fall back to a store held by one instance only, so the most
-   * the service ever stores has to fit: the longest remembered query and a long file name.
+   * the service ever stores has to fit: both sign-ins, the longest remembered query and a long
+   * file name.
    */
   test('Should keep the largest session the service stores inside the cookie', async () => {
     const lastIssuesQuery = `/issues?searchTerm=${'x'.repeat(maxRememberedQueryLength - 19)}`
@@ -86,11 +108,12 @@ describe('#session', () => {
     expect(lastIssuesQuery).toHaveLength(maxRememberedQueryLength)
 
     const { result } = await writeThenRead({
+      signIn: 'yes',
       message: notification,
       query: lastIssuesQuery
     })
 
-    expect(result).toEqual({ notification, lastIssuesQuery })
+    expect(result).toEqual({ notification, lastIssuesQuery, signedIn: true })
   })
 
   test('Should not set a cookie for a visitor with nothing in their session', async () => {

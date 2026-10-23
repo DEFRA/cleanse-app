@@ -5,8 +5,11 @@ against the backend deployed in CDP's dev environment.
 
 .DESCRIPTION
 Builds the production image and starts compose.yml: NODE_ENV=production, ECS JSON logs and
-sessions in an encrypted cookie. Waits until the stack is healthy, checks that it answers, and
-reads the status page back.
+sessions in an encrypted cookie. Waits until the stack is healthy, checks that it answers, signs
+in and reads the status page back.
+
+Every page asks for a password, and the admin area for a second one: PASSWORD and ADMIN_PASSWORD.
+Each is read from your User environment, or generated for the run and shown in the summary.
 
 With -Backend local, the default, compose.local-backend.yml adds the backend's own stack from the
 cleanse repository, which must be checked out next to this one, as ../cleanse:
@@ -82,6 +85,7 @@ param(
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot 'scripts\backend-target.ps1')
+. (Join-Path $PSScriptRoot 'scripts\sign-in.ps1')
 
 # Matches `name:` in compose.yml. Passed explicitly so COMPOSE_PROJECT_NAME cannot redirect it.
 $project = 'cleanse-app'
@@ -319,17 +323,21 @@ function Test-Backend([int]$Port, [string]$ServiceKey) {
   }
 }
 
-# The status page, read back as text: the summary tag and a line per check.
-function Test-App([int]$Port) {
+# Signs in as a person would, with both passwords, then reads the status page back as text: the
+# summary tag and a line per check.
+function Test-App([int]$Port, $Passwords) {
   Write-Step 'Checking the app'
   $base = "http://localhost:$Port"
+  $session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
+  $password = @($Passwords | Where-Object { $_.Name -eq 'PASSWORD' })[0].Value
+  $adminPassword = @($Passwords | Where-Object { $_.Name -eq 'ADMIN_PASSWORD' })[0].Value
 
   try {
     $health = Invoke-WebRequest -UseBasicParsing -Uri "$base/health" -TimeoutSec 10
     Write-Host "    GET /health          $($health.StatusCode)"
-    $homePage = Invoke-WebRequest -UseBasicParsing -Uri "$base/" -TimeoutSec 60
-    Write-Host "    GET /                $($homePage.StatusCode)"
-    $status = Invoke-WebRequest -UseBasicParsing -Uri "$base/admin/status" -TimeoutSec 60
+    $homePage = Invoke-SignIn $base '/login' $password $session
+    Write-Host "    Sign in, then GET /  $($homePage.StatusCode)"
+    $status = Invoke-SignIn $base '/admin/login?next=%2Fadmin%2Fstatus' $adminPassword $session
   }
   catch {
     throw "The app did not answer as expected: $($_.Exception.Message) See: docker compose --project-name $project logs cleanse-app"
@@ -347,7 +355,15 @@ function Test-App([int]$Port) {
   }
 }
 
-function Show-Summary($Model) {
+function Write-SignIn($Passwords) {
+  $label = 'Sign in'
+  foreach ($line in (Format-SignInPasswords $Passwords)) {
+    Write-Host ('  {0,-11} {1}' -f $label, $line)
+    $label = ''
+  }
+}
+
+function Show-Summary($Model, $Passwords) {
   $appPort = Get-HostPort $Model 'cleanse-app'
 
   Write-Host ''
@@ -359,6 +375,7 @@ function Show-Summary($Model) {
     Write-Host 'cleanse-app and the Cleanse backend are up, in one stack, in production mode.' -ForegroundColor Green
     Write-Host "  App         http://localhost:$appPort"
     Write-Host "  Status      http://localhost:$appPort/admin/status"
+    Write-SignIn $Passwords
     Write-Host "  Backend     http://localhost:$apiPort   (header x-cleanse-api-key: $($backendSettings.Auth__ApiKey__Key))"
     Write-Host "  OpenAPI     http://localhost:$apiPort/v1/openapi.json"
     Write-Host ('  Postgres    localhost:{0}, database {1}. Service login {2}/{3}; owner {4}/{5}' -f
@@ -383,6 +400,7 @@ function Show-Summary($Model) {
   Write-Host 'cleanse-app is up, in production mode.' -ForegroundColor Green
   Write-Host "  App         http://localhost:$appPort"
   Write-Host "  Status      http://localhost:$appPort/admin/status"
+  Write-SignIn $Passwords
   Write-Host "  Backend     $($target.Description)"
   Write-Host "              $($target.Url)"
   Write-Host '              Changes you make here are made to the dev environment''s data.' -ForegroundColor Yellow
@@ -430,6 +448,7 @@ function Format-ComposeLine([string]$Line) {
 }
 
 $previousBackend = $null
+$previousSignIn = $null
 $previousSnapshot = $env:CLEANSE_KRDS_SNAPSHOT
 Push-Location $PSScriptRoot
 
@@ -504,6 +523,8 @@ try {
 
   # Read by compose.yml while it is interpolated, and restored afterwards.
   $previousBackend = Set-CleanseBackendVariables $target
+  $passwords = @(Get-SignInPasswords)
+  $previousSignIn = Set-SignInVariables $passwords
 
   Write-Step 'Checking ports'
   Assert-PortVariables
@@ -538,10 +559,10 @@ try {
       Test-Backend (Get-HostPort $model 'cleanse') $model.services.cleanse.environment.Auth__ApiKey__Key
     }
 
-    Test-App (Get-HostPort $model 'cleanse-app')
+    Test-App (Get-HostPort $model 'cleanse-app') $passwords
   }
 
-  Show-Summary $model
+  Show-Summary $model $passwords
 
   if ($Follow) {
     $services = @('cleanse-app')
@@ -557,6 +578,10 @@ try {
 finally {
   if ($previousBackend) {
     Restore-CleanseBackendVariables $previousBackend
+  }
+
+  if ($previousSignIn) {
+    Restore-SignInVariables $previousSignIn
   }
 
   $env:CLEANSE_KRDS_SNAPSHOT = $previousSnapshot

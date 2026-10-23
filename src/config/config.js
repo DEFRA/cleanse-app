@@ -127,7 +127,7 @@ export const config = convict({
   session: {
     cookie: {
       ttl: {
-        doc: 'Session cookie ttl',
+        doc: 'Session cookie ttl. Also how long a sign-in lasts, however busy the session',
         format: Number,
         default: fourHoursMs,
         env: 'SESSION_COOKIE_TTL'
@@ -145,6 +145,22 @@ export const config = convict({
         default: isProduction,
         env: 'SESSION_COOKIE_SECURE'
       }
+    }
+  },
+  auth: {
+    password: {
+      doc: 'The password everyone signs in to the service with. A CDP Portal secret. While it is unset, nobody can sign in',
+      format: String,
+      default: '',
+      sensitive: true,
+      env: 'PASSWORD'
+    },
+    adminPassword: {
+      doc: 'The second password the admin area asks for, once signed in. A CDP Portal secret. While it is unset, the admin area cannot be opened',
+      format: String,
+      default: '',
+      sensitive: true,
+      env: 'ADMIN_PASSWORD'
     }
   },
   nunjucks: {

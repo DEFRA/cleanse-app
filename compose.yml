@@ -20,6 +20,10 @@ services:
       CLEANSE_API_KEY: ${CLEANSE_API_KEY:-local-development-key}
       # Only set for -Backend dev: the developer key the CDP gateway expects as x-api-key.
       CLEANSE_GATEWAY_KEY: ${CLEANSE_GATEWAY_KEY:-}
+      # Sign-in passwords, passed through and never written here: dev-docker-up.ps1 takes them
+      # from your User environment, or generates them for the run. Unset, nobody can sign in.
+      PASSWORD: ${PASSWORD:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
     healthcheck:
       test: ['CMD-SHELL', 'curl -fsS http://localhost:3000/health || exit 1']
       interval: 10s

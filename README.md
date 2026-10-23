@@ -8,6 +8,7 @@ Core delivery platform Node.js Frontend Template.
 
 - [Requirements](#requirements)
   - [Node.js](#nodejs)
+- [Signing in](#signing-in)
 - [Sessions](#sessions)
 - [Demo anonymisation](#demo-anonymisation)
 - [Status page](#status-page)
@@ -42,6 +43,30 @@ cd cleanse-app
 nvm use
 ```
 
+## Signing in
+
+Every page asks for a password first, and the admin area, under `/admin`, then asks for a second one. Both are secrets,
+set in the CDP Portal for each environment, and take effect when the service is next deployed:
+
+| Secret           | What it opens                                                                                    |
+| ---------------- | ------------------------------------------------------------------------------------------------ |
+| `PASSWORD`       | The whole service. Until it is set, nobody can sign in, and the sign-in page says so.            |
+| `ADMIN_PASSWORD` | The admin area, for someone already signed in. Until it is set, the admin area cannot be opened. |
+
+The `cleanse` repository's `scripts/generate-secrets.ps1` generates both, along with the service's other secrets.
+
+- Only `/health`, which the platform calls, and the stylesheets, scripts and images are open without signing in.
+- The session cookie holds proof that the password was typed, not the password: a MAC, under the password, of when that
+  sign-in was made and a random value. It cannot be made without the password, even by someone who can read or write
+  the cookie, nor moved to another sign-in or a later time. Changing a password signs everyone out of what it opens.
+- A sign-in lasts for `SESSION_COOKIE_TTL`, 4 hours by default, from when it was made, however busy the session. Sign
+  out ends it in that browser. Nothing is kept on the server, so a copy of the cookie made earlier lasts until the
+  sign-in runs out; only changing a password ends every sign-in at once.
+- After signing in, people go on to the page they asked for. Only pages of this service are gone on to.
+- Sign out, in the navigation, ends both sign-ins.
+- Sign-ins are logged with `event.category` `authentication`. A refused password is logged at warning, but what was
+  typed never is.
+
 ## Sessions
 
 Sessions are held by the browser, in an encrypted cookie named `session`, rather than in a server-side cache. The
@@ -50,9 +75,9 @@ service needs no Redis, and any instance can serve any request.
 The cookie is sealed with `SESSION_COOKIE_PASSWORD`. Set it as a secret in each CDP environment, because the default in
 `src/config/config.js` is public.
 
-Browsers limit a cookie to about 4KB, so sessions only carry small values: flash notifications, and the issues list
-query that "Back to issues" returns to. A query of more than 1,000 characters is not remembered. A session larger than
-3,500 bytes would move to one instance's memory, where the other instances could not see it.
+Browsers limit a cookie to about 4KB, so sessions only carry small values: the sign-in, flash notifications, and the
+issues list query that "Back to issues" returns to. A query of more than 1,000 characters is not remembered. A session
+larger than 3,500 bytes would move to one instance's memory, where the other instances could not see it.
 `src/server/plugins/session.test.js` checks that the largest session the service stores still fits.
 
 ## Proxy
@@ -162,6 +187,11 @@ The service needs a Cleanse backend. On Windows, `dev-up.ps1` runs `npm run dev`
 
 The local backend stack is started from the `cleanse` repository, with `.\dev-docker-up.ps1`. To run this service and
 the backend in Docker as one stack instead, see [Docker Compose](#docker-compose).
+
+Both `dev-up.ps1` and `dev-docker-up.ps1` read the sign-in passwords, `PASSWORD` and `ADMIN_PASSWORD`, from your User
+environment variables. If either is not set, they generate one for the run and show it, so set both to keep the same
+passwords between runs. Without the scripts, set them yourself, for example in a `.env` file, which `npm run dev` reads
+and git ignores.
 
 `-Backend dev` calls `https://ephemeral-protected.api.dev.cdp-int.defra.cloud/cleanse`. The gateway can only be reached
 from the DEFRA network. It needs two User environment variables:
@@ -273,7 +303,7 @@ has these services:
 | `floci`       | The S3 emulator holding the imports bucket                         | 4566 |
 
 On Windows, `dev-docker-up.ps1` builds the images and starts the stack. It then waits for the health checks, checks that
-the backend and the home page answer, and reads back the status page:
+the backend answers, signs in with both passwords and reads back the home page and the status page:
 
 ```powershell
 .\dev-docker-up.ps1                         # The whole stack, with the backend built from ../cleanse
@@ -290,7 +320,8 @@ engine on whenever the stack is restarted.
 The backend's own stack, which the `cleanse` repository starts, publishes the same ports, so stop it first. Its
 database is separate from this stack's, and is kept.
 
-Without the script, run:
+Without the script, set `PASSWORD` and `ADMIN_PASSWORD` in your environment, which `compose.yml` passes through, then
+run:
 
 ```bash
 docker compose -f compose.yml -f compose.local-backend.yml up --build --detach --wait

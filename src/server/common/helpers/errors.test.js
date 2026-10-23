@@ -4,6 +4,7 @@ import { catchAll } from './errors.js'
 import { CleanseApiError } from './cleanse/client.js'
 import { createServer } from '../../server.js'
 import { statusCodes } from '../constants/status-codes.js'
+import { signedInAsAdmin } from '#/test-helpers/sign-in.js'
 
 const json = (body, status) =>
   new Response(JSON.stringify(body), {
@@ -58,7 +59,8 @@ describe('#errors', () => {
 
       const { result, statusCode } = await server.inject({
         method: 'GET',
-        url: page
+        url: page,
+        auth: signedInAsAdmin
       })
 
       expect(result).toEqual(

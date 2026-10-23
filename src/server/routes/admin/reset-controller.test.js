@@ -2,6 +2,7 @@ import { vi } from 'vitest'
 
 import { createServer } from '#/server/server.js'
 import { statusCodes } from '#/server/common/constants/status-codes.js'
+import { signedInAsAdmin } from '#/test-helpers/sign-in.js'
 
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -32,7 +33,11 @@ describe('#admin reset', () => {
   })
 
   async function withCrumb() {
-    const page = await server.inject({ method: 'GET', url: '/admin/reset' })
+    const page = await server.inject({
+      method: 'GET',
+      url: '/admin/reset',
+      auth: signedInAsAdmin
+    })
     return {
       crumb: /name="crumb" value="([^"]+)"/.exec(page.result)?.[1],
       cookie: page.headers['set-cookie']?.[0].split(';')[0]
@@ -45,14 +50,16 @@ describe('#admin reset', () => {
       method: 'POST',
       url: '/admin/reset',
       headers: { cookie },
-      payload: { crumb, ...payload }
+      payload: { crumb, ...payload },
+      auth: signedInAsAdmin
     })
   }
 
   test('Should warn about what is destroyed before anything is typed', async () => {
     const { statusCode, result } = await server.inject({
       method: 'GET',
-      url: '/admin/reset'
+      url: '/admin/reset',
+      auth: signedInAsAdmin
     })
 
     expect(statusCode).toBe(statusCodes.ok)
@@ -139,7 +146,8 @@ describe('#admin reset', () => {
     const { statusCode } = await server.inject({
       method: 'POST',
       url: '/admin/reset',
-      payload: { resetKey: 'a-key', scope: 'all' }
+      payload: { resetKey: 'a-key', scope: 'all' },
+      auth: signedInAsAdmin
     })
 
     expect(statusCode).toBe(statusCodes.forbidden)

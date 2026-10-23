@@ -4,6 +4,7 @@ import { anonymiseClient, createAnonymiser } from './anonymise.js'
 import { createCleanseClient } from './client.js'
 import { config } from '#/config/config.js'
 import { createServer } from '#/server/server.js'
+import { signedIn } from '#/test-helpers/sign-in.js'
 
 const key = 'test-demo-key'
 
@@ -255,7 +256,8 @@ describe('#demo anonymisation end to end', () => {
   test('Should render the issue page without any real value', async () => {
     const response = await server.inject({
       method: 'GET',
-      url: '/issues/ISSUEID'
+      url: '/issues/ISSUEID',
+      auth: signedIn
     })
 
     expect(response.statusCode).toBe(200)

@@ -3,6 +3,7 @@ import { vi } from 'vitest'
 import { createServer } from '#/server/server.js'
 import { statusCodes } from '#/server/common/constants/status-codes.js'
 import { CleanseApiError } from '#/server/common/helpers/cleanse/client.js'
+import { signedInAsAdmin } from '#/test-helpers/sign-in.js'
 import { describeFailure, summarise } from './status-controller.js'
 
 // The credential is swappable per test, so a token that cannot be minted can be simulated.
@@ -108,7 +109,8 @@ describe('#admin status', () => {
     authHeaders.mockResolvedValue({ authorization: 'Bearer test' })
   })
 
-  const get = (url = '/admin/status') => server.inject({ method: 'GET', url })
+  const get = (url = '/admin/status') =>
+    server.inject({ method: 'GET', url, auth: signedInAsAdmin })
 
   test('Should check the backend and each of its dependencies', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(json(diagnostics))

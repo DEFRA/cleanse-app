@@ -2,6 +2,7 @@ import { vi } from 'vitest'
 
 import { createServer } from '#/server/server.js'
 import { statusCodes } from '#/server/common/constants/status-codes.js'
+import { signedIn } from '#/test-helpers/sign-in.js'
 
 const issue = {
   id: '2-JBSWY3DPEHPK3PXP',
@@ -55,7 +56,7 @@ describe('#issue actions', () => {
 
   /** A POST needs a valid crumb, so take one from a rendered page the way a browser would. */
   async function withCrumb(url) {
-    const page = await server.inject({ method: 'GET', url })
+    const page = await server.inject({ method: 'GET', url, auth: signedIn })
     const cookie = page.headers['set-cookie']?.[0].split(';')[0]
     const crumb = /name="crumb" value="([^"]+)"/.exec(page.result)?.[1]
 
@@ -68,7 +69,8 @@ describe('#issue actions', () => {
     const { statusCode } = await server.inject({
       method: 'POST',
       url: `/issues/${issue.id}/start`,
-      payload: { expectedVersion: '4' }
+      payload: { expectedVersion: '4' },
+      auth: signedIn
     })
 
     expect(statusCode).toBe(statusCodes.forbidden)
@@ -82,7 +84,8 @@ describe('#issue actions', () => {
       method: 'POST',
       url: `/issues/${issue.id}/start`,
       headers: { cookie },
-      payload: { crumb, expectedVersion: '4' }
+      payload: { crumb, expectedVersion: '4' },
+      auth: signedIn
     })
 
     expect(statusCode).toBe(statusCodes.found)
@@ -115,7 +118,8 @@ describe('#issue actions', () => {
       method: 'POST',
       url: `/issues/${issue.id}/start`,
       headers: { cookie },
-      payload: { crumb, expectedVersion: '4' }
+      payload: { crumb, expectedVersion: '4' },
+      auth: signedIn
     })
 
     expect(statusCode).toBe(statusCodes.conflict)
@@ -150,7 +154,8 @@ describe('#issue actions', () => {
 
         const { statusCode, result } = await server.inject({
           method: 'GET',
-          url: `/issues/${missingId}${page}`
+          url: `/issues/${missingId}${page}`,
+          auth: signedIn
         })
 
         expect(statusCode).toBe(statusCodes.notFound)
@@ -191,7 +196,8 @@ describe('#issue actions', () => {
           method: 'POST',
           url: `/issues/${missingId}/${action}`,
           headers: { cookie },
-          payload: { crumb, expectedVersion: '4', ...payload }
+          payload: { crumb, expectedVersion: '4', ...payload },
+          auth: signedIn
         })
 
         expect(statusCode).toBe(statusCodes.notFound)
