@@ -30,7 +30,7 @@ const menu = [
     text: 'Status',
     href: '/admin/status',
     description:
-      'Dependency health, issue counts and when the database was last reset.'
+      'Health of the front end, the backend and its dependencies, which builds are running, issue counts and the last reset.'
   },
   {
     text: 'Reset',

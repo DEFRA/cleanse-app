@@ -10,6 +10,7 @@ Core delivery platform Node.js Frontend Template.
   - [Node.js](#nodejs)
 - [Sessions](#sessions)
 - [Demo anonymisation](#demo-anonymisation)
+- [Status page](#status-page)
 - [Local Development](#local-development)
   - [Setup](#setup)
   - [Development](#development)
@@ -93,6 +94,30 @@ postcode or holding name that has already been shown searches for the real value
 
 Only what the service displays is anonymised. Logs, uploaded CSVs and anything typed into the service are still real,
 and actions taken during a demo change real issues.
+
+## Status page
+
+`/admin/status` shows whether the service is working, and is the first place to look when it is not. A tag at the top
+sums up the checks: a red tag counts the problems, and a grey tag counts the checks that could not be confirmed.
+
+| Check           | What it means                                                                         |
+| --------------- | ------------------------------------------------------------------------------------- |
+| Cleanse service | Whether this service could call the backend's `/v1/diagnostics`, and how long it took |
+| Database        | The backend's PostgreSQL database, as the backend reports it                          |
+| Import storage  | The backend's S3 bucket for imports, as the backend reports it                        |
+| KRDS            | The Keeper Reference Data Service, which the backend checks through its `/health`     |
+
+If the backend cannot be reached, its three checks show as not confirmed rather than failed. The reason is shown with the
+failure: for example, a 401 means the backend refused this service's credential, and a 403 from the developer gateway
+means the developer key has expired.
+
+Below the checks, the page shows the following:
+
+- Each service's version, environment, start time and uptime, and the front end's Node.js version. If the backend is too
+  old to report these, the page says so.
+- The backend URL the front end uses, and how it authenticates: an STS web identity token on CDP, or an API key locally.
+- When the data was last reset.
+- The number of issues in each status and workflow status.
 
 ## Local Development
 

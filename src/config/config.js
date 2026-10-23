@@ -23,6 +23,12 @@ export const config = convict({
     default: null,
     env: 'SERVICE_VERSION'
   },
+  cdpEnvironment: {
+    doc: 'The CDP environment the service is running in, injected into the container by the platform. "local" when unset',
+    format: String,
+    default: 'local',
+    env: 'ENVIRONMENT'
+  },
   host: {
     doc: 'The IP address to bind',
     format: 'ipaddress',
