@@ -1,4 +1,5 @@
 import { presentIssue, presentEvidence } from './presenter.js'
+import { issuesBackLink } from './list-controller.js'
 import { describeWorkflowStatus } from '#/server/common/constants/workflow.js'
 
 const historyActions = {
@@ -30,7 +31,7 @@ export const detailController = {
         }))
         .reverse(),
       notification: flash.length ? flash[0] : null,
-      backLink: request.yar.get('lastIssuesQuery') ?? '/issues'
+      backLink: issuesBackLink(request.yar.get('lastIssuesQuery'))
     })
   }
 }

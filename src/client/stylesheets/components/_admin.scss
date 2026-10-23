@@ -17,6 +17,10 @@
   text-align: center;
 }
 
+.app-status-summary .govuk-tag {
+  margin-right: govuk.govuk-spacing(2);
+}
+
 // Shape as well as colour, so the state survives greyscale printing and colour blindness.
 .app-status {
   @include govuk.govuk-font($size: 24, $weight: bold);

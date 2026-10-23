@@ -8,12 +8,13 @@ Core delivery platform Node.js Frontend Template.
 
 - [Requirements](#requirements)
   - [Node.js](#nodejs)
-- [Server-side Caching](#server-side-caching)
-- [Redis](#redis)
+- [Sessions](#sessions)
 - [Demo anonymisation](#demo-anonymisation)
+- [Status page](#status-page)
 - [Local Development](#local-development)
   - [Setup](#setup)
   - [Development](#development)
+  - [Choosing a backend](#choosing-a-backend)
   - [Production](#production)
   - [Npm scripts](#npm-scripts)
   - [Update dependencies](#update-dependencies)
@@ -41,24 +42,18 @@ cd cleanse-app
 nvm use
 ```
 
-## Server-side Caching
+## Sessions
 
-We use Catbox for server-side caching. By default the service will use CatboxRedis when deployed and CatboxMemory for
-local development.
-You can override the default behaviour by setting the `SESSION_CACHE_ENGINE` environment variable to either `redis` or
-`memory`.
+Sessions are held by the browser, in an encrypted cookie named `session`, rather than in a server-side cache. The
+service needs no Redis, and any instance can serve any request.
 
-Please note: CatboxMemory (`memory`) is _not_ suitable for production use! The cache will not be shared between each
-instance of the service and it will not persist between restarts.
+The cookie is sealed with `SESSION_COOKIE_PASSWORD`. Set it as a secret in each CDP environment, because the default in
+`src/config/config.js` is public.
 
-## Redis
-
-Redis is an in-memory key-value store. Every instance of a service has access to the same Redis key-value store similar
-to how services might have a database (or MongoDB). All frontend services are given access to a namespaced prefixed that
-matches the service name. e.g. `my-service` will have access to everything in Redis that is prefixed with `my-service`.
-
-If your service does not require a session cache to be shared between instances or if you don't require Redis, you can
-disable setting `SESSION_CACHE_ENGINE=false` or changing the default value in `src/config/index.js`.
+Browsers limit a cookie to about 4KB, so sessions only carry small values: flash notifications, and the issues list
+query that "Back to issues" returns to. A query of more than 1,000 characters is not remembered. A session larger than
+3,500 bytes would move to one instance's memory, where the other instances could not see it.
+`src/server/plugins/session.test.js` checks that the largest session the service stores still fits.
 
 ## Proxy
 
@@ -100,6 +95,30 @@ postcode or holding name that has already been shown searches for the real value
 Only what the service displays is anonymised. Logs, uploaded CSVs and anything typed into the service are still real,
 and actions taken during a demo change real issues.
 
+## Status page
+
+`/admin/status` shows whether the service is working, and is the first place to look when it is not. A tag at the top
+sums up the checks: a red tag counts the problems, and a grey tag counts the checks that could not be confirmed.
+
+| Check           | What it means                                                                         |
+| --------------- | ------------------------------------------------------------------------------------- |
+| Cleanse service | Whether this service could call the backend's `/v1/diagnostics`, and how long it took |
+| Database        | The backend's PostgreSQL database, as the backend reports it                          |
+| Import storage  | The backend's S3 bucket for imports, as the backend reports it                        |
+| KRDS            | The Keeper Reference Data Service, which the backend checks through its `/health`     |
+
+If the backend cannot be reached, its three checks show as not confirmed rather than failed. The reason is shown with the
+failure: for example, a 401 means the backend refused this service's credential, and a 403 from the developer gateway
+means the developer key has expired.
+
+Below the checks, the page shows the following:
+
+- Each service's version, environment, start time and uptime, and the front end's Node.js version. If the backend is too
+  old to report these, the page says so.
+- The backend URL the front end uses, and how it authenticates: an STS web identity token on CDP, or an API key locally.
+- When the data was last reset.
+- The number of issues in each status and workflow status.
+
 ## Local Development
 
 ### Setup
@@ -125,6 +144,38 @@ To run the application in `development` mode run:
 ```bash
 npm run dev
 ```
+
+### Choosing a backend
+
+The service needs a Cleanse backend. On Windows, `dev-up.ps1` runs `npm run dev` against one:
+
+```powershell
+.\dev-up.ps1                 # The local backend stack, on http://localhost:8085
+.\dev-up.ps1 -Backend dev    # cleanse in CDP's dev environment, through CDP's developer gateway
+.\dev-up.ps1 -Demo           # Either backend, with its data anonymised (see Demo anonymisation)
+```
+
+The local backend stack is started from the `cleanse` repository, with `.\dev-docker-up.ps1`.
+
+`-Backend dev` calls `https://ephemeral-protected.api.dev.cdp-int.defra.cloud/cleanse`. The gateway can only be reached
+from the DEFRA network. It needs two User environment variables:
+
+| Variable               | Value                                                                                        |
+| ---------------------- | -------------------------------------------------------------------------------------------- |
+| `CDP_EPHEMERAL_GW_KEY` | Your developer API key for dev, from your user profile in the CDP Portal. It lasts 24 hours. |
+| `CLEANSE_APIKEY`       | cleanse's `Auth__ApiKey__Key` secret in dev                                                  |
+
+The script checks both keys before it starts the service. If a key is refused, it stops and explains what to fix.
+Anything you do against dev changes the data in dev.
+
+Without the script, set the service's own variables:
+
+| Variable              | Purpose                                                 | Default                                    |
+| --------------------- | ------------------------------------------------------- | ------------------------------------------ |
+| `CLEANSE_API_URL`     | The backend's base URL                                  | `http://localhost:8085`                    |
+| `CLEANSE_API_AUTH`    | `apiKey`, or `stsJwt` on CDP                            | `stsJwt` in production, otherwise `apiKey` |
+| `CLEANSE_API_KEY`     | Sent to the backend as `x-cleanse-api-key`              | `local-development-key`                    |
+| `CLEANSE_GATEWAY_KEY` | Sent as `x-api-key`, for the CDP developer gateway only | Not sent                                   |
 
 ### Production
 
@@ -200,17 +251,31 @@ docker run -p 3000:3000 cleanse-app
 
 ### Docker Compose
 
-A local environment with:
+`compose.yml` runs this service on its own, from the production image, in the same way as CDP. It sets
+`NODE_ENV=production` and logs ECS JSON. The database, storage and KRDS belong to the Cleanse backend, which has its own
+stack in the `cleanse` repository, so this stack does not start them.
 
-- Floci (replacing Localstack) for AWS services (S3, SQS)
-- Redis
-- MongoDB
-- This service.
-- A commented out backend example.
+On Windows, `dev-docker-up.ps1` builds the image and starts the service. It then waits for the service's health check,
+and checks the home page and the status page:
+
+```powershell
+.\dev-docker-up.ps1                    # The local backend stack, which must already be running
+.\dev-docker-up.ps1 -Backend dev       # cleanse in CDP's dev environment, as for dev-up.ps1
+.\dev-docker-up.ps1 -NoBuild -Follow   # Start without rebuilding, then follow the logs
+.\dev-docker-up.ps1 -Down              # Stop
+```
+
+Without the script, start the backend stack first, then run:
 
 ```bash
-docker compose up --build -d
+docker compose -f compose.yml -f compose.local-backend.yml up --build --detach --wait
 ```
+
+`compose.local-backend.yml` connects the service to the backend stack's `cleanse_cdp-tenant` network. On that network,
+the backend's address is `http://cleanse:8085`.
+
+The service is published on port 3000. To use another port, set `CLEANSE_APP_PORT`. Cookies are not marked as Secure,
+because the service is served over plain HTTP.
 
 ### Dependabot
 

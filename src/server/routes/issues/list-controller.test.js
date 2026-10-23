@@ -1,4 +1,11 @@
-import { readFilters, buildQuery, buildPagination } from './list-controller.js'
+import {
+  readFilters,
+  buildQuery,
+  buildPagination,
+  rememberableQuery,
+  maxRememberedQueryLength,
+  issuesBackLink
+} from './list-controller.js'
 
 describe('#readFilters', () => {
   test('Should default to the working queue on a first visit', () => {
@@ -93,5 +100,47 @@ describe('#buildPagination', () => {
     // Consecutive pages need no gap marker.
     const tight = buildPagination(filters, 2, 3)
     expect(tight.items.filter((item) => item.ellipsis)).toHaveLength(0)
+  })
+})
+
+describe('#rememberableQuery', () => {
+  const url = (search) => new URL(`http://localhost/issues${search}`)
+
+  test('Should remember the filters and page to return to', () => {
+    expect(rememberableQuery(url('?filtered=true&status=active&page=3'))).toBe(
+      '/issues?filtered=true&status=active&page=3'
+    )
+  })
+
+  /** The session is a cookie, so an absurd query must not be what pushes it past its limit. */
+  test('Should fall back to the plain list rather than carry an oversized query', () => {
+    const long = `?searchTerm=${'x'.repeat(maxRememberedQueryLength)}`
+
+    expect(rememberableQuery(url(long))).toBe('/issues')
+  })
+})
+
+describe('#issuesBackLink', () => {
+  test('Should link back to the remembered list', () => {
+    expect(issuesBackLink('/issues')).toBe('/issues')
+    expect(issuesBackLink('/issues?filtered=true&page=3')).toBe(
+      '/issues?filtered=true&page=3'
+    )
+  })
+
+  /** The session is held by the browser, so a forged one must not be able to choose the link. */
+  test.each([
+    undefined,
+    null,
+    42,
+    '',
+    'javascript:alert(1)',
+    'https://example.com/issues',
+    '//example.com/issues',
+    '/issues/../admin',
+    '/issuesx',
+    '/admin/status'
+  ])('Should link to the plain list instead of %j', (remembered) => {
+    expect(issuesBackLink(remembered)).toBe('/issues')
   })
 })

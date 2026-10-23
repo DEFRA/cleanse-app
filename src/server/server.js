@@ -10,9 +10,8 @@ import { catchAll } from './common/helpers/errors.js'
 import { nunjucksConfig } from '#/config/nunjucks/nunjucks.js'
 import { requestTracing } from './plugins/request-tracing.js'
 import { requestLogger } from './plugins/request-logger.js'
-import { sessionCache } from './plugins/session-cache.js'
+import { session } from './plugins/session.js'
 import { cleanseApi } from './common/helpers/cleanse/index.js'
-import { getCacheEngine } from './common/helpers/session-cache/cache-engine.js'
 import { secureContext } from '@defra/hapi-secure-context'
 import { contentSecurityPolicy } from './plugins/content-security-policy.js'
 import { metrics } from '@defra/cdp-metrics'
@@ -44,12 +43,6 @@ export async function createServer() {
     router: {
       stripTrailingSlash: true
     },
-    cache: [
-      {
-        name: config.get('session.cache.name'),
-        engine: getCacheEngine(config.get('session.cache.engine'))
-      }
-    ],
     state: {
       strictHeader: false
     }
@@ -60,7 +53,7 @@ export async function createServer() {
     metrics,
     secureContext,
     pulse,
-    sessionCache,
+    session,
     csrf,
     nunjucksConfig,
     Scooter,

@@ -1,0 +1,12 @@
+# Layered on by ./dev-docker-up.ps1 -Backend local. Joins the backend stack's network, where the
+# backend answers as http://cleanse:8085, so that stack (../cleanse) has to be running first.
+services:
+  cleanse-app:
+    networks:
+      - default
+      - cleanse
+
+networks:
+  cleanse:
+    name: cleanse_cdp-tenant
+    external: true

@@ -33,7 +33,8 @@ LABEL uk.gov.defra.ffc.parent-image=defradigital/node:${PARENT_VERSION}
 ENV TZ="Europe/London"
 
 # A fresh base, so NODE_ENV does not carry over from the build stage. Without it the service
-# falls back to an in-memory session cache and a non-secure cookie.
+# would log pretty text rather than ECS JSON, set cookies without the Secure flag and call the
+# backend with an API key rather than an STS web identity token.
 ENV NODE_ENV=production
 
 # Add curl to template.
