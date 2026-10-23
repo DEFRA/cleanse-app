@@ -134,6 +134,15 @@ describe('#createCleanseClient error handling', () => {
     expect(new CleanseApiError({ status: 400 }).isConflict).toBe(false)
   })
 
+  /** The backend answers an unknown import with a 400, so its code is what says it is missing. */
+  test('Should recognise a not-found by its code as well as its status', () => {
+    const error = (status, code) => new CleanseApiError({ status, code })
+
+    expect(error(400, 'import.not_found').isNotFound).toBe(true)
+    expect(error(400, 'validation.failed').isNotFound).toBe(false)
+    expect(error(503, 'api.unreachable').isNotFound).toBe(false)
+  })
+
   test('Should still raise a usable error when the body is not a problem document', async () => {
     stubFetch(new Response('<html>502</html>', { status: 502 }))
     const client = createCleanseClient({ auth: { headers: async () => ({}) } })
