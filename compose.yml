@@ -1,7 +1,7 @@
 # Runs cleanse-app the way CDP does: the production image, NODE_ENV=production and ECS JSON logs.
 # Start it with ./dev-docker-up.ps1, which picks the backend:
-#   -Backend local  the backend's own Docker stack (../cleanse, ./dev-docker-up.ps1), joined through
-#                   compose.local-backend.yml, where the backend answers as http://cleanse:8085
+#   -Backend local  the backend built from ../cleanse, with its database and S3 emulator, all in
+#                   this one stack; compose.local-backend.yml adds them. The default.
 #   -Backend dev    cleanse in CDP's dev environment, through CDP's developer ephemeral gateway
 # Host port 3000 can be moved with CLEANSE_APP_PORT.
 name: cleanse-app
@@ -20,6 +20,10 @@ services:
       CLEANSE_API_KEY: ${CLEANSE_API_KEY:-local-development-key}
       # Only set for -Backend dev: the developer key the CDP gateway expects as x-api-key.
       CLEANSE_GATEWAY_KEY: ${CLEANSE_GATEWAY_KEY:-}
+      # Sign-in passwords, passed through and never written here: dev-docker-up.ps1 takes them
+      # from your User environment, or generates them for the run. Unset, nobody can sign in.
+      PASSWORD: ${PASSWORD:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
     healthcheck:
       test: ['CMD-SHELL', 'curl -fsS http://localhost:3000/health || exit 1']
       interval: 10s

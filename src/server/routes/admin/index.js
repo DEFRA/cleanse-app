@@ -53,7 +53,7 @@ export const admin = {
   plugin: {
     name: 'admin',
     register(server) {
-      server.route([
+      const routes = [
         { method: 'GET', path: '/admin', ...adminHomeController },
 
         { method: 'GET', path: '/admin/runs', ...runsController },
@@ -72,7 +72,15 @@ export const admin = {
 
         { method: 'GET', path: '/admin/reset', ...resetController },
         { method: 'POST', path: '/admin/reset', ...performResetController }
-      ])
+      ]
+
+      // Every page here asks for the admin password as well as the service's.
+      server.route(
+        routes.map((route) => ({
+          ...route,
+          options: { ...route.options, auth: 'admin' }
+        }))
+      )
     }
   }
 }

@@ -29,8 +29,12 @@ export class CleanseApiError extends Error {
     return this.status === 409
   }
 
+  /**
+   * The record asked for does not exist. Read from the code as well as the status, because the
+   * backend answers an unknown import with a 400 that carries import.not_found.
+   */
   get isNotFound() {
-    return this.status === 404
+    return this.status === 404 || Boolean(this.code?.endsWith('.not_found'))
   }
 }
 

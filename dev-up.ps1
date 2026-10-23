@@ -2,6 +2,11 @@
 .SYNOPSIS
 Runs cleanse-app on Node with live reload, against a local or a deployed Cleanse backend.
 
+.DESCRIPTION
+Every page asks for a password, and the admin area for a second one: PASSWORD and ADMIN_PASSWORD.
+Each is read from your User environment, or generated for the run and printed before the app
+starts.
+
 .PARAMETER Backend
 local  The backend's Docker stack on http://localhost:8085 (../cleanse/dev-docker-up.ps1). The default.
 dev    cleanse in CDP's dev environment, through CDP's developer ephemeral gateway. Needs the User
@@ -30,10 +35,12 @@ $ErrorActionPreference = 'Stop'
 
 Set-Location $PSScriptRoot
 . (Join-Path $PSScriptRoot 'scripts\backend-target.ps1')
+. (Join-Path $PSScriptRoot 'scripts\sign-in.ps1')
 
 $previousAnonymise = $env:DEMO_ANONYMISE
 $previousKey = $env:DEMO_ANONYMISE_KEY
 $previousBackend = $null
+$previousSignIn = $null
 
 try {
   $target = Get-CleanseBackendTarget $Backend
@@ -66,7 +73,12 @@ try {
     Write-Host 'Changes you make here are made to the dev environment''s data.' -ForegroundColor Yellow
   }
 
+  $passwords = @(Get-SignInPasswords)
+  $previousSignIn = Set-SignInVariables $passwords
+
   Write-Host 'Starting Cleanse frontend at http://localhost:3000 (status: http://localhost:3000/admin/status)'
+  Write-Host 'Sign in with:'
+  Format-SignInPasswords $passwords | ForEach-Object { Write-Host "  $_" }
   npm.cmd run dev
 } finally {
   # $env: changes persist in the calling PowerShell session, so restore them.
@@ -74,5 +86,8 @@ try {
   $env:DEMO_ANONYMISE_KEY = $previousKey
   if ($previousBackend) {
     Restore-CleanseBackendVariables $previousBackend
+  }
+  if ($previousSignIn) {
+    Restore-SignInVariables $previousSignIn
   }
 }

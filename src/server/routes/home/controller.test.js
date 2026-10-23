@@ -2,6 +2,7 @@ import { vi } from 'vitest'
 
 import { createServer } from '#/server/server.js'
 import { statusCodes } from '#/server/common/constants/status-codes.js'
+import { signedIn } from '#/test-helpers/sign-in.js'
 
 const summary = {
   groupId: 'cts-sam',
@@ -40,7 +41,8 @@ describe('#homeController', () => {
   test('Should provide expected response', async () => {
     const { result, statusCode } = await server.inject({
       method: 'GET',
-      url: '/'
+      url: '/',
+      auth: signedIn
     })
 
     expect(statusCode).toBe(statusCodes.ok)
@@ -50,7 +52,11 @@ describe('#homeController', () => {
   })
 
   test('Should count only active issues against each workflow status', async () => {
-    const { result } = await server.inject({ method: 'GET', url: '/' })
+    const { result } = await server.inject({
+      method: 'GET',
+      url: '/',
+      auth: signedIn
+    })
 
     // 7 todo + 3 in progress are open; the 2 inactive resolved must not be counted as active.
     expect(result).toEqual(

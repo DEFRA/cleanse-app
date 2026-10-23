@@ -8,6 +8,7 @@ Core delivery platform Node.js Frontend Template.
 
 - [Requirements](#requirements)
   - [Node.js](#nodejs)
+- [Signing in](#signing-in)
 - [Sessions](#sessions)
 - [Demo anonymisation](#demo-anonymisation)
 - [Status page](#status-page)
@@ -42,6 +43,30 @@ cd cleanse-app
 nvm use
 ```
 
+## Signing in
+
+Every page asks for a password first, and the admin area, under `/admin`, then asks for a second one. Both are secrets,
+set in the CDP Portal for each environment, and take effect when the service is next deployed:
+
+| Secret           | What it opens                                                                                    |
+| ---------------- | ------------------------------------------------------------------------------------------------ |
+| `PASSWORD`       | The whole service. Until it is set, nobody can sign in, and the sign-in page says so.            |
+| `ADMIN_PASSWORD` | The admin area, for someone already signed in. Until it is set, the admin area cannot be opened. |
+
+The `cleanse` repository's `scripts/generate-secrets.ps1` generates both, along with the service's other secrets.
+
+- Only `/health`, which the platform calls, and the stylesheets, scripts and images are open without signing in.
+- The session cookie holds proof that the password was typed, not the password: a MAC, under the password, of when that
+  sign-in was made and a random value. It cannot be made without the password, even by someone who can read or write
+  the cookie, nor moved to another sign-in or a later time. Changing a password signs everyone out of what it opens.
+- A sign-in lasts for `SESSION_COOKIE_TTL`, 4 hours by default, from when it was made, however busy the session. Sign
+  out ends it in that browser. Nothing is kept on the server, so a copy of the cookie made earlier lasts until the
+  sign-in runs out; only changing a password ends every sign-in at once.
+- After signing in, people go on to the page they asked for. Only pages of this service are gone on to.
+- Sign out, in the navigation, ends both sign-ins.
+- Sign-ins are logged with `event.category` `authentication`. A refused password is logged at warning, but what was
+  typed never is.
+
 ## Sessions
 
 Sessions are held by the browser, in an encrypted cookie named `session`, rather than in a server-side cache. The
@@ -50,9 +75,9 @@ service needs no Redis, and any instance can serve any request.
 The cookie is sealed with `SESSION_COOKIE_PASSWORD`. Set it as a secret in each CDP environment, because the default in
 `src/config/config.js` is public.
 
-Browsers limit a cookie to about 4KB, so sessions only carry small values: flash notifications, and the issues list
-query that "Back to issues" returns to. A query of more than 1,000 characters is not remembered. A session larger than
-3,500 bytes would move to one instance's memory, where the other instances could not see it.
+Browsers limit a cookie to about 4KB, so sessions only carry small values: the sign-in, flash notifications, and the
+issues list query that "Back to issues" returns to. A query of more than 1,000 characters is not remembered. A session
+larger than 3,500 bytes would move to one instance's memory, where the other instances could not see it.
 `src/server/plugins/session.test.js` checks that the largest session the service stores still fits.
 
 ## Proxy
@@ -100,14 +125,19 @@ and actions taken during a demo change real issues.
 `/admin/status` shows whether the service is working, and is the first place to look when it is not. A tag at the top
 sums up the checks: a red tag counts the problems, and a grey tag counts the checks that could not be confirmed.
 
-| Check           | What it means                                                                         |
-| --------------- | ------------------------------------------------------------------------------------- |
-| Cleanse service | Whether this service could call the backend's `/v1/diagnostics`, and how long it took |
-| Database        | The backend's PostgreSQL database, as the backend reports it                          |
-| Import storage  | The backend's S3 bucket for imports, as the backend reports it                        |
-| KRDS            | The Keeper Reference Data Service, which the backend checks through its `/health`     |
+| Check            | What it means                                                                          |
+| ---------------- | -------------------------------------------------------------------------------------- |
+| Cleanse service  | Whether this service could call the backend's `/v1/diagnostics`, and how long it took  |
+| Database         | The backend's PostgreSQL database, as the backend reports it                           |
+| Import storage   | The backend's S3 bucket for imports, as the backend reports it                         |
+| KRDS health      | Whether the KRDS Data Bridge is up, from its own `/health`, which needs no key         |
+| KRDS read access | Whether the backend can read KRDS with its API key: the genuine connection a run needs |
 
-If the backend cannot be reached, its three checks show as not confirmed rather than failed. The reason is shown with the
+KRDS health passes even when the backend's KRDS API key is wrong or missing, because the bridge's health check needs no
+key. KRDS read access asks the Data Bridge for its latest snapshot with the key, as a rule run does, and names that
+snapshot, its size and when it was last modified. A refused key, or no snapshot to read, shows there as a problem.
+
+If the backend cannot be reached, its four checks show as not confirmed rather than failed. The reason is shown with the
 failure: for example, a 401 means the backend refused this service's credential, and a 403 from the developer gateway
 means the developer key has expired.
 
@@ -155,7 +185,13 @@ The service needs a Cleanse backend. On Windows, `dev-up.ps1` runs `npm run dev`
 .\dev-up.ps1 -Demo           # Either backend, with its data anonymised (see Demo anonymisation)
 ```
 
-The local backend stack is started from the `cleanse` repository, with `.\dev-docker-up.ps1`.
+The local backend stack is started from the `cleanse` repository, with `.\dev-docker-up.ps1`. To run this service and
+the backend in Docker as one stack instead, see [Docker Compose](#docker-compose).
+
+Both `dev-up.ps1` and `dev-docker-up.ps1` read the sign-in passwords, `PASSWORD` and `ADMIN_PASSWORD`, from your User
+environment variables. If either is not set, they generate one for the run and show it, so set both to keep the same
+passwords between runs. Without the scripts, set them yourself, for example in a `.env` file, which `npm run dev` reads
+and git ignores.
 
 `-Backend dev` calls `https://ephemeral-protected.api.dev.cdp-int.defra.cloud/cleanse`. The gateway can only be reached
 from the DEFRA network. It needs two User environment variables:
@@ -251,31 +287,51 @@ docker run -p 3000:3000 cleanse-app
 
 ### Docker Compose
 
-`compose.yml` runs this service on its own, from the production image, in the same way as CDP. It sets
-`NODE_ENV=production` and logs ECS JSON. The database, storage and KRDS belong to the Cleanse backend, which has its own
-stack in the `cleanse` repository, so this stack does not start them.
+`compose.yml` runs this service from the production image, in the same way as CDP. It sets `NODE_ENV=production` and
+logs ECS JSON.
 
-On Windows, `dev-docker-up.ps1` builds the image and starts the service. It then waits for the service's health check,
-and checks the home page and the status page:
+By default the Cleanse backend runs in the same stack. `compose.local-backend.yml` includes the backend's own
+`compose.yml` from the `cleanse` repository, which must be checked out next to this one, as `../cleanse`. The stack then
+has these services:
+
+| Service       | What it is                                                         | Port |
+| ------------- | ------------------------------------------------------------------ | ---- |
+| `cleanse-app` | This service, which calls the backend as `http://cleanse:8085`     | 3000 |
+| `cleanse`     | The backend, built from `../cleanse`                               | 8085 |
+| `postgres`    | The backend's database, kept in the stack's `postgres-data` volume | 5432 |
+| `liquibase`   | Applies the backend's changelog to the database, then exits        |      |
+| `floci`       | The S3 emulator holding the imports bucket                         | 4566 |
+
+On Windows, `dev-docker-up.ps1` builds the images and starts the stack. It then waits for the health checks, checks that
+the backend answers, signs in with both passwords and reads back the home page and the status page:
 
 ```powershell
-.\dev-docker-up.ps1                    # The local backend stack, which must already be running
-.\dev-docker-up.ps1 -Backend dev       # cleanse in CDP's dev environment, as for dev-up.ps1
-.\dev-docker-up.ps1 -NoBuild -Follow   # Start without rebuilding, then follow the logs
-.\dev-docker-up.ps1 -Down              # Stop
+.\dev-docker-up.ps1                         # The whole stack, with the backend built from ../cleanse
+.\dev-docker-up.ps1 -KrdsSnapshot <path>    # The same, with the backend's rules engine reading a KRDS snapshot
+.\dev-docker-up.ps1 -Backend dev            # This service alone, against cleanse in CDP's dev environment
+.\dev-docker-up.ps1 -NoBuild -Follow        # Start without rebuilding, then follow both services' logs
+.\dev-docker-up.ps1 -Down                   # Stop, keeping the database. Add -Reset to delete it
 ```
 
-Without the script, start the backend stack first, then run:
+The stack's database starts empty. To fill it, start the stack with `-KrdsSnapshot`, then start a rule run from the Runs
+page. `-KrdsSnapshot` defaults to the `CLEANSE_KRDS_SNAPSHOT` environment variable, so setting that keeps the rules
+engine on whenever the stack is restarted.
+
+The backend's own stack, which the `cleanse` repository starts, publishes the same ports, so stop it first. Its
+database is separate from this stack's, and is kept.
+
+Without the script, set `PASSWORD` and `ADMIN_PASSWORD` in your environment, which `compose.yml` passes through, then
+run:
 
 ```bash
 docker compose -f compose.yml -f compose.local-backend.yml up --build --detach --wait
 ```
 
-`compose.local-backend.yml` connects the service to the backend stack's `cleanse_cdp-tenant` network. On that network,
-the backend's address is `http://cleanse:8085`.
+To turn the rules engine on, set `CLEANSE_KRDS_SNAPSHOT` to the snapshot's path and add
+`-f ../cleanse/compose.krds.yml`.
 
-The service is published on port 3000. To use another port, set `CLEANSE_APP_PORT`. Cookies are not marked as Secure,
-because the service is served over plain HTTP.
+To use other ports, set `CLEANSE_APP_PORT`, `CLEANSE_PORT`, `CLEANSE_POSTGRES_PORT` and `CLEANSE_FLOCI_PORT`. Cookies
+are not marked as Secure, because the service is served over plain HTTP.
 
 ### Dependabot
 

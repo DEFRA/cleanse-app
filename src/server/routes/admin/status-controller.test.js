@@ -3,6 +3,7 @@ import { vi } from 'vitest'
 import { createServer } from '#/server/server.js'
 import { statusCodes } from '#/server/common/constants/status-codes.js'
 import { CleanseApiError } from '#/server/common/helpers/cleanse/client.js'
+import { signedInAsAdmin } from '#/test-helpers/sign-in.js'
 import { describeFailure, summarise } from './status-controller.js'
 
 // The credential is swappable per test, so a token that cannot be minted can be simulated.
@@ -39,6 +40,14 @@ const diagnostics = {
     state: 'failed',
     detail: 'Unhealthy, 503 from /health.',
     elapsedMilliseconds: 31
+  },
+  krdsAccess: {
+    provider: 'DataBridge',
+    target: 'krds.example',
+    state: 'ok',
+    detail:
+      'API key accepted, 200 from /api/etl/staging/sqlite/latest. Latest snapshot views/krds-db_20261019070003.sqlite, 812 MB, last modified 2026-10-19 07:00 UTC',
+    elapsedMilliseconds: 85.4
   },
   issues: {
     state: 'ok',
@@ -100,7 +109,8 @@ describe('#admin status', () => {
     authHeaders.mockResolvedValue({ authorization: 'Bearer test' })
   })
 
-  const get = (url = '/admin/status') => server.inject({ method: 'GET', url })
+  const get = (url = '/admin/status') =>
+    server.inject({ method: 'GET', url, auth: signedInAsAdmin })
 
   test('Should check the backend and each of its dependencies', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(json(diagnostics))
@@ -126,10 +136,47 @@ describe('#admin status', () => {
       ],
       [
         'Problem',
-        'KRDS',
+        'KRDS health',
         'DataBridge krds.example Unhealthy, 503 from /health. Answered in 31ms'
+      ],
+      [
+        'OK',
+        'KRDS read access',
+        'DataBridge krds.example API key accepted, 200 from /api/etl/staging/sqlite/latest. Latest snapshot views/krds-db_20261019070003.sqlite, 812 MB, last modified 2026-10-19 07:00 UTC. Answered in 85ms'
       ]
     ])
+  })
+
+  /** The health check is anonymous, so only the read shows whether the key gets the backend in. */
+  test('Should show a refused KRDS key as a problem even while KRDS is healthy', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      json({
+        ...healthy,
+        krdsAccess: {
+          ...diagnostics.krdsAccess,
+          state: 'failed',
+          detail:
+            'The Data Bridge refused the API key, 401 Unauthorized from /api/etl/staging/sqlite/latest. Rules:Krds:ApiKey must be the key the KRDS team issued for this environment.',
+          elapsedMilliseconds: 12
+        }
+      })
+    )
+
+    const { result } = await get()
+
+    expect(checksIn(result).slice(-2)).toEqual([
+      [
+        'OK',
+        'KRDS health',
+        'DataBridge krds.example Healthy, 200 from /health. Answered in 31ms'
+      ],
+      [
+        'Problem',
+        'KRDS read access',
+        'DataBridge krds.example The Data Bridge refused the API key, 401 Unauthorized from /api/etl/staging/sqlite/latest. Rules:Krds:ApiKey must be the key the KRDS team issued for this environment. Answered in 12ms'
+      ]
+    ])
+    expect(result).toContain('1 problem')
   })
 
   test('Should sum up the checks at the top of the page', async () => {
@@ -137,7 +184,7 @@ describe('#admin status', () => {
     expect((await get()).result).toContain('1 problem')
 
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(json(healthy))
-    expect((await get()).result).toContain('All 4 checks OK')
+    expect((await get()).result).toContain('All 5 checks OK')
   })
 
   test('Should say which build of each service is running, and where', async () => {
@@ -169,6 +216,20 @@ describe('#admin status', () => {
       'Not reported by this version of the backend.'
     ])
     expect(result).toContain('does not say which build it is')
+  })
+
+  test('Should say so when the backend is too old to check its KRDS key', async () => {
+    const { krdsAccess, ...older } = healthy
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(json(older))
+
+    const { result } = await get()
+
+    expect(checksIn(result)).toContainEqual([
+      'Unknown',
+      'KRDS read access',
+      'Not reported by this version of the backend.'
+    ])
+    expect(result).toContain('1 not confirmed')
   })
 
   test('Should count every status against every workflow status, including the empty ones', async () => {
@@ -219,7 +280,7 @@ describe('#admin status', () => {
       checksIn(result)
         .slice(1)
         .map(([state]) => state)
-    ).toEqual(['Unknown', 'Unknown', 'Unknown'])
+    ).toEqual(['Unknown', 'Unknown', 'Unknown', 'Unknown'])
     expect(result).toContain('The Cleanse backend did not answer')
     expect(result).toContain('Unknown.')
   })
