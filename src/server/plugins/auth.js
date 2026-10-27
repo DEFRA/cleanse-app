@@ -9,6 +9,43 @@ import { config } from '#/config/config.js'
 
 /** Where a session records what its owner has signed in to. */
 const sessionKey = 'signedIn'
+const entraKey = 'entraIdentity'
+
+export const isEntra = () => config.get('auth.mode') === 'entra'
+
+export function entraFingerprint() {
+  const { tenantId, clientId, clientSecret } = config.get('auth.entra')
+  return createHash('sha256')
+    .update(JSON.stringify([tenantId, clientId, clientSecret]))
+    .digest('base64url')
+}
+
+export function entraIdentity(request) {
+  if (!isEntra()) {
+    return null
+  }
+  const identity = signedInFrom(request, entraKey)
+  return identity &&
+    identity.fingerprint === entraFingerprint() &&
+    isCurrent(identity)
+    ? identity
+    : null
+}
+
+export function signInEntra(request, user) {
+  request.yar.reset()
+  const signedInAt = Date.now()
+  request.yar.set(entraKey, {
+    userId: user.id,
+    signedInAt,
+    fingerprint: entraFingerprint()
+  })
+  request.yar.set(sessionKey, {
+    signedInAt,
+    mode: 'entra',
+    nonce: randomBytes(16).toString('base64url')
+  })
+}
 
 /**
  * Every page is behind the service password. The admin area is behind the admin password as
@@ -62,7 +99,11 @@ function isCurrent(signedIn) {
   return (
     Number.isInteger(signedIn.signedInAt) &&
     age >= 0 &&
-    age < config.get('session.cookie.ttl')
+    age <
+      Math.min(
+        config.get('session.cookie.ttl'),
+        isEntra() ? 14400000 : Infinity
+      )
   )
 }
 
@@ -70,9 +111,9 @@ function isCurrent(signedIn) {
  * The session's sign-in, if any. Hapi answers an address that matches no route without loading
  * the session, and yar then throws rather than answer, so there is none to read.
  */
-function signedInFrom(request) {
+function signedInFrom(request, key = sessionKey) {
   try {
-    return request?.yar?.get(sessionKey) ?? null
+    return request?.yar?.get(key) ?? null
   } catch {
     return null
   }
@@ -80,11 +121,16 @@ function signedInFrom(request) {
 
 /** Whether the session has been signed in to a gate with its current password. */
 export function isSignedInTo(request, gate) {
+  if (gate === 'service' && isEntra()) {
+    return Boolean(entraIdentity(request))
+  }
   const signedIn = signedInFrom(request)
   const password = passwordFor(gate)
 
   if (
     password === '' ||
+    (signedIn?.mode ?? 'password') !== config.get('auth.mode') ||
+    (isEntra() && !entraIdentity(request)) ||
     typeof signedIn?.[gate] !== 'string' ||
     typeof signedIn.nonce !== 'string' ||
     !isCurrent(signedIn)
@@ -119,6 +165,7 @@ export function signIn(request, gate) {
     signedInAt: current?.signedInAt ?? Date.now(),
     nonce: current?.nonce ?? randomBytes(16).toString('base64url')
   }
+  signedIn.mode = config.get('auth.mode')
   signedIn[gate] = proofOf(gate, passwordFor(gate), signedIn).toString(
     'base64url'
   )

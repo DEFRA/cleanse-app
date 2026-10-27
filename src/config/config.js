@@ -148,6 +148,40 @@ export const config = convict({
     }
   },
   auth: {
+    mode: {
+      doc: 'Service sign-in method. Entra access is restricted by enterprise application assignment',
+      format: ['password', 'entra'],
+      default: 'password',
+      env: 'AUTH_MODE'
+    },
+    entra: {
+      tenantId: {
+        format: String,
+        default: '',
+        env: 'ENTRA_TENANT_ID'
+      },
+      clientId: {
+        format: String,
+        default: '',
+        env: 'ENTRA_CLIENT_ID'
+      },
+      clientSecret: {
+        format: String,
+        default: '',
+        sensitive: true,
+        env: 'ENTRA_CLIENT_SECRET'
+      },
+      redirectUri: {
+        format: String,
+        default: 'http://localhost:3000/auth/entra/callback',
+        env: 'ENTRA_REDIRECT_URI'
+      },
+      postLogoutRedirectUri: {
+        format: String,
+        default: 'http://localhost:3000/login',
+        env: 'ENTRA_POST_LOGOUT_REDIRECT_URI'
+      }
+    },
     password: {
       doc: 'The password everyone signs in to the service with. A CDP Portal secret. While it is unset, nobody can sign in',
       format: String,

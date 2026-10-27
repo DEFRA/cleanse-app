@@ -66,18 +66,19 @@
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-full">
 
-      <h2 class="govuk-heading-m">Rows that could not be applied</h2>
+      <h2 class="govuk-heading-m">Import warnings and rejected rows</h2>
 
       <p class="govuk-body">
         {% if rejectionTotal > rejections | length %}
-          Showing the first {{ rejections | length }} of {{ rejectionTotal }}.
+          Showing the first {{ rejections | length }} of {{ rejectionTotal }} report entries.
         {% else %}
-          {{ rejectionTotal }} row{{ "s" if rejectionTotal != 1 }} could not be applied.
+          {{ rejectionTotal }} report entr{{ "ies" if rejectionTotal != 1 else "y" }}.
         {% endif %}
       </p>
+      <p class="govuk-body">Assignment warnings do not prevent the rest of a row being applied. If a name cannot be matched to exactly one known user, it is kept as a text assignment; choose a user on the issue to link it to their account.</p>
 
       <table class="govuk-table app-table--compact">
-        <caption class="govuk-visually-hidden">Rejected rows</caption>
+        <caption class="govuk-visually-hidden">Import warnings and rejected rows</caption>
         <thead class="govuk-table__head">
           <tr class="govuk-table__row">
             <th scope="col" class="govuk-table__header govuk-table__header--numeric">Row</th>

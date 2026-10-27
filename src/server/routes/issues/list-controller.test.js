@@ -40,6 +40,12 @@ describe('#readFilters', () => {
     expect(filters.searchTerm).toBe('01/036/8000')
     expect(filters.page).toBe(1)
   })
+
+  test('Should default to any assignee and retain explicit user or unassigned choices', () => {
+    expect(readFilters({}).assignee).toBe('all')
+    expect(readFilters({ assignee: 'unassigned' }).assignee).toBe('unassigned')
+    expect(readFilters({ assignee: 'user-id' }).assignee).toBe('user-id')
+  })
 })
 
 describe('#buildQuery', () => {
@@ -69,6 +75,30 @@ describe('#buildQuery', () => {
     expect(query).toContain('searchTerm=01%2F036%2F8000')
     expect(query).toContain('page=2')
   })
+
+  test.each(['unassigned', 'user-id'])(
+    'Should preserve assignee %s in pagination',
+    (assignee) => {
+      const filters = readFilters({
+        filtered: 'true',
+        assignee,
+        ruleId: '2',
+        searchTerm: 'holding'
+      })
+      const query = buildQuery(filters, 2)
+      expect(
+        readFilters(Object.fromEntries(new URLSearchParams(query)))
+      ).toMatchObject({
+        assignee,
+        ruleId: '2',
+        searchTerm: 'holding',
+        page: 2
+      })
+      expect(buildPagination(filters, 1, 3).next.href).toContain(
+        `assignee=${assignee}`
+      )
+    }
+  )
 })
 
 describe('#buildPagination', () => {

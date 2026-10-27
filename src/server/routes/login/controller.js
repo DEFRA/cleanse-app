@@ -31,7 +31,12 @@ const pages = {
 }
 
 /** Never redirected to after signing in: the sign-in page again, or signing straight back out. */
-const notDestinations = new Set(['/login', '/logout'])
+const notDestinations = new Set([
+  '/login',
+  '/logout',
+  '/auth/entra/login',
+  '/auth/entra/callback'
+])
 const origin = 'http://cleanse-app.invalid'
 
 /**

@@ -14,14 +14,20 @@ services:
     environment:
       # Plain http locally, so the session and CSRF cookies cannot be marked Secure.
       SESSION_COOKIE_SECURE: 'false'
+      SESSION_COOKIE_PASSWORD: ${SESSION_COOKIE_PASSWORD:?Set SESSION_COOKIE_PASSWORD in .env}
+      AUTH_MODE: ${AUTH_MODE:-password}
+      ENTRA_TENANT_ID: ${ENTRA_TENANT_ID:-}
+      ENTRA_CLIENT_ID: ${ENTRA_CLIENT_ID:-}
+      ENTRA_CLIENT_SECRET: ${ENTRA_CLIENT_SECRET:-}
+      ENTRA_REDIRECT_URI: ${ENTRA_REDIRECT_URI:-http://localhost:3000/auth/entra/callback}
+      ENTRA_POST_LOGOUT_REDIRECT_URI: ${ENTRA_POST_LOGOUT_REDIRECT_URI:-http://localhost:3000/login}
       CLEANSE_API_URL: ${CLEANSE_API_URL:-http://cleanse:8085}
       # The production default is an STS web identity token, which only CDP can issue.
       CLEANSE_API_AUTH: apiKey
       CLEANSE_API_KEY: ${CLEANSE_API_KEY:-local-development-key}
       # Only set for -Backend dev: the developer key the CDP gateway expects as x-api-key.
       CLEANSE_GATEWAY_KEY: ${CLEANSE_GATEWAY_KEY:-}
-      # Sign-in passwords, passed through and never written here: dev-docker-up.ps1 takes them
-      # from your User environment, or generates them for the run. Unset, nobody can sign in.
+      # Local startup reads and persists these in the ignored .env file.
       PASSWORD: ${PASSWORD:-}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
     healthcheck:

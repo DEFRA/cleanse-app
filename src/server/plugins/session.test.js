@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 
 import { config } from '#/config/config.js'
 import { createServer } from '#/server/server.js'
-import { isSignedInTo, signIn } from '#/server/plugins/auth.js'
+import { isSignedInTo, signIn, signInEntra } from '#/server/plugins/auth.js'
 import { maxRememberedQueryLength } from '#/server/routes/issues/list-controller.js'
 
 /**
@@ -23,7 +23,10 @@ describe('#session', () => {
         path: '/test/session/write',
         options: { auth: false },
         handler(request, h) {
-          if (request.query.signIn) {
+          if (request.query.signIn === 'entra') {
+            signInEntra(request, { id: randomUUID() })
+            signIn(request, 'admin')
+          } else if (request.query.signIn) {
             signIn(request, 'service')
             signIn(request, 'admin')
           }
@@ -120,5 +123,21 @@ describe('#session', () => {
     const response = await first.inject({ method: 'GET', url: '/health' })
 
     expect(sessionCookie(response)).toBeUndefined()
+  })
+
+  test('Should carry the largest Entra session across instances without server storage', async () => {
+    config.set('auth.mode', 'entra')
+    try {
+      const { result } = await writeThenRead({
+        signIn: 'entra',
+        message: 'x'.repeat(300),
+        query: `/issues?searchTerm=${'x'.repeat(980)}`
+      })
+      expect(result.signedIn).toBe(true)
+      expect(result.notification).toHaveLength(300)
+      expect(result.lastIssuesQuery).toHaveLength(999)
+    } finally {
+      config.set('auth.mode', 'password')
+    }
   })
 })

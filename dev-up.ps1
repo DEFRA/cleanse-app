@@ -3,9 +3,8 @@
 Runs cleanse-app on Node with live reload, against a local or a deployed Cleanse backend.
 
 .DESCRIPTION
-Every page asks for a password, and the admin area for a second one: PASSWORD and ADMIN_PASSWORD.
-Each is read from your User environment, or generated for the run and printed before the app
-starts.
+Loads local settings and secrets from the ignored .env file. Entra mode requires
+ENTRA_TENANT_ID, ENTRA_CLIENT_ID and ENTRA_CLIENT_SECRET. The admin area retains its password.
 
 .PARAMETER Backend
 local  The backend's Docker stack on http://localhost:8085 (../cleanse/dev-docker-up.ps1). The default.
@@ -36,6 +35,8 @@ $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
 . (Join-Path $PSScriptRoot 'scripts\backend-target.ps1')
 . (Join-Path $PSScriptRoot 'scripts\sign-in.ps1')
+. (Join-Path $PSScriptRoot 'scripts\local-env.ps1')
+Initialize-LocalEnvironment
 
 $previousAnonymise = $env:DEMO_ANONYMISE
 $previousKey = $env:DEMO_ANONYMISE_KEY

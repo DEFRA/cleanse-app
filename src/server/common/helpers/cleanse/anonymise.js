@@ -198,6 +198,7 @@ export function createAnonymiser(key, { maxRemembered = 50000 } = {}) {
     value === 'system'
       ? value
       : fakeOf('personId', (f) => f.string.uuid(), { searchable: false })(value)
+  const userId = fakeOf('userId', (f) => f.string.uuid())
   const note = fakeOf('note', (f) => f.helpers.arrayElement(caseworkerNotes), {
     searchable: false
   })
@@ -251,6 +252,8 @@ export function createAnonymiser(key, { maxRemembered = 50000 } = {}) {
     rewrite(value, {
       context,
       assignedTo: personName,
+      assignedUserId: userId,
+      assignedUserFullName: personName,
       notes: note,
       externalNotes: note
     })
@@ -279,6 +282,22 @@ export function createAnonymiser(key, { maxRemembered = 50000 } = {}) {
   const rejection = (value) => rewrite(value, { detail: hide })
 
   const responses = {
+    recordLogin: (value) =>
+      rewrite(value, {
+        id: userId,
+        fullName: personName,
+        subject: personId,
+        objectId: personId
+      }),
+    searchUsers: page((value) =>
+      rewrite(value, {
+        id: userId,
+        fullName: personName,
+        subject: personId,
+        objectId: personId
+      })
+    ),
+    assignUser: issue,
     getGroupSummary: (value) => rewrite(value, { latestRun: run }),
     searchIssues: page(issue),
     getIssue: issue,
@@ -330,7 +349,18 @@ export function anonymiseClient(client, anonymiser) {
         transform(
           await method({
             ...query,
+            assignedUserId: anonymiser.realSearchTerm(query.assignedUserId),
             searchTerm: anonymiser.realSearchTerm(query.searchTerm)
+          })
+        )
+    }
+
+    if (name === 'assignUser') {
+      return async (id, body) =>
+        transform(
+          await method(id, {
+            ...body,
+            userId: anonymiser.realSearchTerm(body.userId)
           })
         )
     }

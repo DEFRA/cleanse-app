@@ -17,6 +17,12 @@
   text-align: center;
 }
 
+.app-user-id {
+  display: block;
+  margin-bottom: 0;
+  overflow-wrap: anywhere;
+}
+
 .app-status-summary .govuk-tag {
   margin-right: govuk.govuk-spacing(2);
 }

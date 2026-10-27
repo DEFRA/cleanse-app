@@ -10,6 +10,10 @@
   }
 }
 
+.app-table-scroll {
+  overflow-x: auto;
+}
+
 .app-secondary-text {
   display: block;
   color: govuk.govuk-functional-colour(secondary-text);

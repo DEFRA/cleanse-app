@@ -1,6 +1,7 @@
 import { presentIssue, presentEvidence } from './presenter.js'
 import { issuesBackLink } from './list-controller.js'
 import { describeWorkflowStatus } from '#/server/common/constants/workflow.js'
+import { isEntra } from '#/server/plugins/auth.js'
 
 const historyActions = {
   Comment: 'Note added',
@@ -23,6 +24,7 @@ export const detailController = {
     return h.view('issues/detail', {
       pageTitle: `${issue.cph ?? 'Issue'} - ${issue.errorDescription}`,
       issue,
+      canAssign: isEntra(),
       evidence: presentEvidence(raw),
       history: history.items
         .map((entry) => ({

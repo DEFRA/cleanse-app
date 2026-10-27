@@ -1,5 +1,11 @@
 import { config } from '#/config/config.js'
 import { presentIssue } from './presenter.js'
+import { isEntra } from '#/server/plugins/auth.js'
+import { CleanseApiError } from '#/server/common/helpers/cleanse/client.js'
+import {
+  knownUsers,
+  userOptions
+} from '#/server/common/helpers/cleanse/known-users.js'
 import {
   issueStatuses,
   workflowStatuses,
@@ -28,6 +34,7 @@ export function readFilters(query = {}) {
       ? toArray(query.workflowStatus)
       : [...openWorkflowStatuses],
     ruleId: query.ruleId ?? 'all',
+    assignee: query.assignee ?? 'all',
     searchTerm: (query.searchTerm ?? '').trim(),
     page: Math.max(1, Number.parseInt(query.page, 10) || 1),
     isDefault: !chosen
@@ -49,6 +56,9 @@ export function buildQuery(filters, page) {
 
   if (filters.searchTerm) {
     params.append('searchTerm', filters.searchTerm)
+  }
+  if (filters.assignee && filters.assignee !== 'all') {
+    params.append('assignee', filters.assignee)
   }
 
   if (page > 1) {
@@ -134,6 +144,40 @@ export const listController = {
   async handler(request, h) {
     const filters = readFilters(request.query)
     const groupId = config.get('cleanse.groupId')
+    let users = []
+    if (isEntra()) {
+      try {
+        users = await knownUsers(request.cleanse)
+      } catch (error) {
+        if (!(error instanceof CleanseApiError)) {
+          throw error
+        }
+        request.logger.error(
+          { status: error.status },
+          'Could not load assignee choices'
+        )
+        return h
+          .view('error/index', {
+            pageTitle: 'Assignee choices unavailable',
+            heading: 'Assignee choices unavailable',
+            message: 'The user directory could not be loaded. Try again.'
+          })
+          .code(503)
+      }
+    }
+    const validAssignee = [
+      'all',
+      'unassigned',
+      ...users.map((user) => user.id)
+    ].includes(filters.assignee)
+    if (!validAssignee) {
+      request.logger.warn('An unavailable assignee filter was requested')
+      return h
+        .view('issues/filter-error', {
+          pageTitle: 'Invalid assignee filter'
+        })
+        .code(400)
+    }
 
     const [results, rules] = await Promise.all([
       request.cleanse.searchIssues({
@@ -142,6 +186,11 @@ export const listController = {
         workflowStatus: filters.workflowStatus,
         ruleId: filters.ruleId === 'all' ? undefined : filters.ruleId,
         searchTerm: filters.searchTerm || undefined,
+        assignedUserId:
+          filters.assignee !== 'all' && filters.assignee !== 'unassigned'
+            ? filters.assignee
+            : undefined,
+        unassigned: filters.assignee === 'unassigned' ? true : undefined,
         sortBy: 'UpdatedAtUtc',
         sortDirection: 'Descending',
         pageNumber: filters.page,
@@ -167,6 +216,19 @@ export const listController = {
       from,
       to: Math.min(from + results.pageSize - 1, results.totalCount),
       pagination: buildPagination(filters, results.pageNumber, totalPages),
+      assigneeItems: [
+        {
+          value: 'all',
+          text: 'Anyone or unassigned',
+          selected: filters.assignee === 'all'
+        },
+        {
+          value: 'unassigned',
+          text: 'Unassigned',
+          selected: filters.assignee === 'unassigned'
+        },
+        ...userOptions(users, filters.assignee)
+      ],
       workflowStatusItems: workflowStatuses.map((status) => ({
         value: status.id,
         text: status.name,

@@ -59,6 +59,12 @@
     <div class="govuk-grid-column-two-thirds">
 
       <h2 class="govuk-heading-m">What do you want to do?</h2>
+      <p class="govuk-body">
+        Assigned to: {{ issue.assignedTo or "Unassigned" }}
+        {% if canAssign %}
+          <a class="govuk-link govuk-!-margin-left-2" href="/issues/{{ issue.id }}/assign">Assign or unassign</a>
+        {% endif %}
+      </p>
 
       <div class="govuk-button-group govuk-!-margin-bottom-7">
         {% if issue.can.start %}

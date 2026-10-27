@@ -1,5 +1,6 @@
 import { listController } from './list-controller.js'
 import { detailController } from './detail-controller.js'
+import { assignmentController } from './assignment-controller.js'
 import {
   startController,
   reopenController,
@@ -20,6 +21,16 @@ export const issues = {
       server.route([
         { method: 'GET', path: '/issues', ...listController },
         { method: 'GET', path: '/issues/{id}', ...detailController },
+        {
+          method: 'GET',
+          path: '/issues/{id}/assign',
+          handler: assignmentController.get
+        },
+        {
+          method: 'POST',
+          path: '/issues/{id}/assign',
+          handler: assignmentController.post
+        },
 
         { method: 'POST', path: '/issues/{id}/start', ...startController },
         { method: 'POST', path: '/issues/{id}/reopen', ...reopenController },
