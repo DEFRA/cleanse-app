@@ -45,6 +45,65 @@ nvm use
 
 ## Signing in
 
+Set `AUTH_MODE=entra` for Microsoft Entra sign-in, or `AUTH_MODE=password` (the
+default) for the existing shared service password. Entra mode still requires
+`ADMIN_PASSWORD` for every admin page after the Microsoft login.
+
+See [ENTRA-AUTH.md](ENTRA-AUTH.md) for the short test-tenant setup and add/remove
+user instructions. Entra must require enterprise-application assignment and
+assign only the Cleanse security group. The application does not request or
+check group claims.
+
+For local development, the startup scripts create an ignored `.env` file and
+persist generated `SESSION_COOKIE_PASSWORD`, `ADMIN_PASSWORD` and `PASSWORD`
+values there. Fill in `ENTRA_TENANT_ID`, `ENTRA_CLIENT_ID` and
+`ENTRA_CLIENT_SECRET` before starting in Entra mode. A safe template is provided
+in [.env.example](.env.example). Secrets are not included in the Docker build
+context; Compose passes the configured values into the running container.
+Local `.env` settings take precedence over Windows User environment passwords.
+Do not share `.env` or paste `docker compose config` output containing secrets.
+
+Entra logins use authorization code flow with PKCE and signed ID-token
+validation. Successful logins persist the subject, tenant/object IDs and name
+through the backend before opening a session. `/admin/users` lists users who
+have signed in and their last logon time; it does not enumerate current group
+membership. The issue's **Assign to** page selects from these known users.
+Both identity-based features are unavailable in password mode. Changing tenant,
+client or client-secret configuration invalidates existing Entra sessions;
+rotate `SESSION_COOKIE_PASSWORD` to invalidate all sessions immediately.
+
+The backend must be upgraded with the user-directory/assignment API and its
+database migration before enabling Entra mode. No directory permissions or
+Microsoft Graph calls are required.
+
+### Issue assignments
+
+Open an issue and select **Assign or unassign** to choose a known user or clear
+its assignment. The current assignee is also shown in the issues list. Use the
+**Assigned to** filter to show one person's issues or **Unassigned**; this choice
+is retained when paging and returning from an issue. Individual user choices
+are available with Entra sign-in; the unassigned filter also works in password mode.
+
+SPOL imports use the optional **Assigned to** column. In Entra mode, names are
+matched against users who have already signed in to the configured tenant and
+application, ignoring case and surrounding whitespace. Only a unique full-name
+match creates a user-linked assignment. Unknown or duplicate names remain text
+assignments and appear as warnings in the import report; other fields still
+import. Text assignments do not match an individual-user filter and are not
+counted as unassigned. Use the issue's assignment page to resolve them.
+
+A blank **Assigned to** cell clears the assignment; omitting the column leaves
+existing assignments unchanged. In password mode, nonblank names remain text
+assignments because no Entra user-directory scope is supplied.
+
+The local backend Compose configuration explicitly trusts the `cleanse-app`
+API-key caller through `Auth__UserDirectory__AllowLocalApiKey=true`. This is a
+local-only exception for the Production-mode Docker image. Do not enable it in
+CDP; deployed user-directory and known-user assignment requests use the existing
+validated STS service identity.
+
+### Password sign-in
+
 Every page asks for a password first, and the admin area, under `/admin`, then asks for a second one. Both are secrets,
 set in the CDP Portal for each environment, and take effect when the service is next deployed:
 
@@ -79,6 +138,13 @@ Browsers limit a cookie to about 4KB, so sessions only carry small values: the s
 issues list query that "Back to issues" returns to. A query of more than 1,000 characters is not remembered. A session
 larger than 3,500 bytes would move to one instance's memory, where the other instances could not see it.
 `src/server/plugins/session.test.js` checks that the largest session the service stores still fits.
+
+Entra sessions contain only the internal user ID, sign-in time and a configuration
+fingerprint; tokens and user profiles are not stored in cookies. A short-lived
+login transaction temporarily carries state, nonce and the PKCE verifier.
+Entra sign-ins have an absolute maximum lifetime of four hours. Group removal
+does not revoke an existing application cookie; Entra propagation and app
+session expiry both affect offboarding time.
 
 ## Proxy
 
@@ -188,10 +254,10 @@ The service needs a Cleanse backend. On Windows, `dev-up.ps1` runs `npm run dev`
 The local backend stack is started from the `cleanse` repository, with `.\dev-docker-up.ps1`. To run this service and
 the backend in Docker as one stack instead, see [Docker Compose](#docker-compose).
 
-Both `dev-up.ps1` and `dev-docker-up.ps1` read the sign-in passwords, `PASSWORD` and `ADMIN_PASSWORD`, from your User
-environment variables. If either is not set, they generate one for the run and show it, so set both to keep the same
-passwords between runs. Without the scripts, set them yourself, for example in a `.env` file, which `npm run dev` reads
-and git ignores.
+Both `dev-up.ps1` and `dev-docker-up.ps1` load the ignored local `.env` file and
+persist missing local passwords there. Fill in the Entra settings before starting
+in Entra mode. Without the scripts, `npm run dev` also reads `.env`, but does not
+generate missing secrets.
 
 `-Backend dev` calls `https://ephemeral-protected.api.dev.cdp-int.defra.cloud/cleanse`. The gateway can only be reached
 from the DEFRA network. It needs two User environment variables:
@@ -303,7 +369,9 @@ has these services:
 | `floci`       | The S3 emulator holding the imports bucket                         | 4566 |
 
 On Windows, `dev-docker-up.ps1` builds the images and starts the stack. It then waits for the health checks, checks that
-the backend answers, signs in with both passwords and reads back the home page and the status page:
+the backend answers, and verifies the Microsoft authorization redirect in Entra
+mode. Complete Microsoft sign-in in your browser. In password mode it signs in
+with both passwords and reads back the home page and status page:
 
 ```powershell
 .\dev-docker-up.ps1                         # The whole stack, with the backend built from ../cleanse

@@ -1,6 +1,7 @@
 import { config } from '#/config/config.js'
 import { describeImportStatus } from '#/server/common/constants/workflow.js'
 import { CleanseApiError } from '#/server/common/helpers/cleanse/client.js'
+import { isEntra } from '#/server/plugins/auth.js'
 
 const decorate = (job) => ({
   ...job,
@@ -53,7 +54,13 @@ export const uploadImportController = {
       const job = await request.cleanse.uploadImport({
         groupId: config.get('cleanse.groupId'),
         fileName: file.filename,
-        content: file.payload
+        content: file.payload,
+        ...(isEntra()
+          ? {
+              tenantId: config.get('auth.entra.tenantId'),
+              clientId: config.get('auth.entra.clientId')
+            }
+          : {})
       })
 
       request.yar.flash(

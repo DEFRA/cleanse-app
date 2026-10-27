@@ -64,6 +64,17 @@
         }) }}
 
         {{ govukSelect({
+          id: "assignee",
+          name: "assignee",
+          label: {
+            text: "Assigned to",
+            classes: "govuk-label--s"
+          },
+          classes: "govuk-!-width-full",
+          items: assigneeItems
+        }) }}
+
+        {{ govukSelect({
           id: "ruleId",
           name: "ruleId",
           label: {
@@ -111,6 +122,7 @@
           Showing {{ from }} to {{ to }}
         </p>
 
+        <div class="app-table-scroll" role="region" aria-label="Issues table" tabindex="0">
         <table class="govuk-table app-table--compact">
           <caption class="govuk-visually-hidden">Issues matching your filters</caption>
           <thead class="govuk-table__head">
@@ -144,12 +156,14 @@
                   {% elif issue.isSuppressed and issue.suppressionExpiresAtUtc %}
                     <span class="app-secondary-text">Until {{ issue.suppressionExpiresAtUtc | govukDate }}</span>
                   {% endif %}
+                  <span class="app-secondary-text">Assigned to: {{ issue.assignedTo or "Unassigned" }}</span>
                 </td>
                 <td class="govuk-table__cell">{{ issue.updatedAtUtc | govukDate }}</td>
               </tr>
             {% endfor %}
           </tbody>
         </table>
+        </div>
 
         {% if pagination %}
           {{ govukPagination(pagination) }}

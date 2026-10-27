@@ -5,10 +5,9 @@
 
 .DESCRIPTION
     PASSWORD signs in to the service, and ADMIN_PASSWORD then opens the admin area. On CDP both
-    are Portal secrets. Locally each is read from the User environment first, then from this
-    session, so a password set once in Windows settings is used every time. One that is set in
-    neither is generated for the run and shown, so no password is ever written into the
-    repository.
+    are Portal secrets. Local entry points load the ignored .env file into the process first.
+    Process settings take precedence over the User environment. Startup persists missing
+    local passwords in .env.
 #>
 
 $script:SignInVariables = @('PASSWORD', 'ADMIN_PASSWORD')
@@ -34,7 +33,7 @@ function Get-SignInPasswords {
         $value = $null
         $source = $script:GeneratedForRun
 
-        foreach ($scope in 'User', 'Process') {
+        foreach ($scope in 'Process', 'User') {
             $candidate = [Environment]::GetEnvironmentVariable($name, $scope)
             if (-not [string]::IsNullOrWhiteSpace($candidate)) {
                 $value = $candidate
@@ -81,6 +80,9 @@ function Restore-SignInVariables([hashtable] $Previous) {
 <# One line per password. A generated one is shown, because there is no other way to know it. #>
 function Format-SignInPasswords($Passwords) {
     foreach ($password in $Passwords) {
+        if ($env:AUTH_MODE -eq 'entra' -and $password.Name -eq 'PASSWORD') {
+            continue
+        }
         $label = if ($password.Name -eq 'PASSWORD') { 'password' } else { 'admin password' }
 
         if ($password.Generated) {

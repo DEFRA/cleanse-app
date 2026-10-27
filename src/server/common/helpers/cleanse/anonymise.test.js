@@ -75,6 +75,45 @@ function expectNoRealValues(text) {
 }
 
 describe('#createAnonymiser', () => {
+  test('Should hide login identities and reverse fake assignment IDs', async () => {
+    const real = {
+      id: crypto.randomUUID(),
+      fullName: 'Real Person',
+      subject: 'Real Subject',
+      objectId: crypto.randomUUID()
+    }
+    const calls = {
+      searchUsers: vi.fn().mockResolvedValue({ items: [real], totalCount: 1 }),
+      searchIssues: vi
+        .fn()
+        .mockResolvedValue({ items: [realIssue], totalCount: 1 }),
+      assignUser: vi.fn().mockResolvedValue(realIssue)
+    }
+    const wrapped = anonymiseClient(
+      { forRequest: () => calls },
+      createAnonymiser(key)
+    )
+    const page = await wrapped.searchUsers()
+    const fake = page.items[0]
+    expect(fake.id).not.toBe(real.id)
+    expect(fake.fullName).not.toBe(real.fullName)
+    expect(fake.subject).not.toBe(real.subject)
+    expect(fake.objectId).not.toBe(real.objectId)
+    await wrapped.assignUser('ISSUEID', { userId: fake.id, expectedVersion: 3 })
+    expect(calls.assignUser).toHaveBeenCalledWith('ISSUEID', {
+      userId: real.id,
+      expectedVersion: 3
+    })
+    await wrapped.searchIssues({
+      assignedUserId: fake.id,
+      unassigned: undefined
+    })
+    expect(calls.searchIssues).toHaveBeenCalledWith({
+      assignedUserId: real.id,
+      unassigned: undefined,
+      searchTerm: undefined
+    })
+  })
   test('Should refuse to start without a key', () => {
     expect(() => createAnonymiser('')).toThrow(/DEMO_ANONYMISE_KEY/)
   })

@@ -8,8 +8,8 @@ Builds the production image and starts compose.yml: NODE_ENV=production, ECS JSO
 sessions in an encrypted cookie. Waits until the stack is healthy, checks that it answers, signs
 in and reads the status page back.
 
-Every page asks for a password, and the admin area for a second one: PASSWORD and ADMIN_PASSWORD.
-Each is read from your User environment, or generated for the run and shown in the summary.
+Loads local settings and secrets from the ignored .env file. Entra mode requires
+ENTRA_TENANT_ID, ENTRA_CLIENT_ID and ENTRA_CLIENT_SECRET. The admin area retains its password.
 
 With -Backend local, the default, compose.local-backend.yml adds the backend's own stack from the
 cleanse repository, which must be checked out next to this one, as ../cleanse:
@@ -86,6 +86,7 @@ $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot 'scripts\backend-target.ps1')
 . (Join-Path $PSScriptRoot 'scripts\sign-in.ps1')
+. (Join-Path $PSScriptRoot 'scripts\local-env.ps1')
 
 # Matches `name:` in compose.yml. Passed explicitly so COMPOSE_PROJECT_NAME cannot redirect it.
 $project = 'cleanse-app'
@@ -335,6 +336,21 @@ function Test-App([int]$Port, $Passwords) {
   try {
     $health = Invoke-WebRequest -UseBasicParsing -Uri "$base/health" -TimeoutSec 10
     Write-Host "    GET /health          $($health.StatusCode)"
+    if ($env:AUTH_MODE -eq 'entra') {
+      $client = [System.Net.Http.HttpClient]::new(
+        [System.Net.Http.HttpClientHandler]@{ AllowAutoRedirect = $false }
+      )
+      try {
+        $response = $client.GetAsync("$base/auth/entra/login").GetAwaiter().GetResult()
+        if ([int]$response.StatusCode -ne 302 -or $response.Headers.Location.Host -ne 'login.microsoftonline.com') {
+          throw 'The Entra login did not redirect to Microsoft.'
+        }
+      } finally {
+        $client.Dispose()
+      }
+      Write-Host '    Entra redirect verified. Complete sign-in interactively in your browser.'
+      return
+    }
     $homePage = Invoke-SignIn $base '/login' $password $session
     Write-Host "    Sign in, then GET /  $($homePage.StatusCode)"
     $status = Invoke-SignIn $base '/admin/login?next=%2Fadmin%2Fstatus' $adminPassword $session
@@ -522,6 +538,7 @@ try {
   }
 
   # Read by compose.yml while it is interpolated, and restored afterwards.
+  Initialize-LocalEnvironment
   $previousBackend = Set-CleanseBackendVariables $target
   $passwords = @(Get-SignInPasswords)
   $previousSignIn = Set-SignInVariables $passwords

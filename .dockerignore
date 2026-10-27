@@ -8,3 +8,5 @@ compose.yml
 compose.*.yml
 scripts
 *.ps1
+.env
+.env.*
